@@ -1,32 +1,25 @@
-# Minimal Makefile for building the Dana lexer/compiler driver
+# Minimal Makefile for a Flex-based C++ lexer
 
-CC      = gcc
-LEX     = flex
-TARGET  = dana-compiler
+# Our final executable
+TARGET = lexer
 
-# Source files
+# Source and generated files
 LEXER_SRC = lexer.l
-MAIN_SRC  = main.c
+LEXER_OUT = lexer.cpp
 
-# Generated files
-LEXER_C   = lexer.c
-
-# Object files
-OBJS      = lexer.o main.o
+# Compiler and flags
+CXX = c++
+CXXFLAGS = -std=c++11
 
 all: $(TARGET)
 
-$(TARGET): $(OBJS)
-	$(CC) -o $(TARGET) $(OBJS)
+# Rule to generate lexer.cpp from lexer.l
+$(LEXER_OUT): $(LEXER_SRC)
+	flex -o $(LEXER_OUT) $(LEXER_SRC)
 
-lexer.o: $(LEXER_C)
-	$(CC) -c $(LEXER_C) -o lexer.o
-
-$(LEXER_C): $(LEXER_SRC)
-	$(LEX) -o $(LEXER_C) $(LEXER_SRC)
-
-main.o: $(MAIN_SRC)
-	$(CC) -c $(MAIN_SRC) -o main.o
+# Rule to compile the generated lexer.cpp into our final executable
+$(TARGET): $(LEXER_OUT)
+	$(CXX) $(CXXFLAGS) -o $(TARGET) $(LEXER_OUT)
 
 clean:
-	rm -f $(TARGET) $(OBJS) $(LEXER_C)
+	rm -f $(TARGET) $(LEXER_OUT)
