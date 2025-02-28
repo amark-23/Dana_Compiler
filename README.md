@@ -1,4 +1,6 @@
-inside installed linux repository:
+for lexer testing:
+
+inside installed linux repository, do:
 
 cd src
 
