@@ -35,9 +35,12 @@
 #define T_string    1032
 #define T_asgn      1033
 #define T_array     1034
+
+int comment_depth = 0; /* nested comment handling */
 %}
 
-%option noyywrap
+%option noyywrap yylineno
+%x COMMENT 
 
 %%
 
@@ -74,22 +77,25 @@
 
 "#".*           { /* Ignore single-line comments */ }
 
-"(*"            { int nest_level = 1;  /* --- Multi-Line Comments (Supports Nesting) --- */
-                  while (nest_level > 0) {
-                      int c = yyinput();
-                      if (c == EOF) break;
-                      if (c == '*') {
-                          int next = yyinput();
-                          if (next == ')') nest_level--;  /* Decrease nesting */
-                          else unput(next);  /* Put back char if not closing */
-                      } 
-                      else if (c == '(') {
-                          int next = yyinput();
-                          if (next == '*') nest_level++; /* Increase nesting */
-                          else unput(next);
-                      }
-                  } 
-                }
+"(*"        {            /*multi - line comment handling*/
+    BEGIN(COMMENT); 
+    comment_depth = 1; 
+}
+
+<COMMENT>"(*" { comment_depth++; } /* --- In COMMENT state: Handle Nested Comments --- */
+<COMMENT>"*)" { 
+    if (--comment_depth == 0) 
+        BEGIN(INITIAL); /* Exit comment state */
+}
+
+<COMMENT>.    { /* Consume characters inside comment */ }
+<COMMENT>\n   { /* Keep track of new lines */ }
+
+<COMMENT><<EOF>> { /* --- ERROR: Unclosed Comment --- */
+    fprintf(stderr, "error: unclosed comment (missing '*)') at line %d\n", yylineno);
+    exit(1);
+}
+
 
 [\+\-\*\/\%\=\&\!\<\>\(\)\[\]\,\:]  { return yytext[0]; } /* Use ASCII values */
 
@@ -106,7 +112,7 @@
 [ \t\n\r]+              { /* Ignore spaces, tabs, and newlines */ } /*Whitespace*/
 
 .                       { 
-                          fprintf(stderr, "error: illegal character '%c' (ASCII: %d) at line %d\n", yytext[0], yytext[0], yylineno); 
+                          fprintf(stderr, "error %d: illegal character '%c' (ASCII: %d) at line %d\n",T_UNKNOWN, yytext[0], yytext[0], yylineno); 
                           exit(1); 
                         } /* --- Catch-All for Unknown Characters --- */
 
