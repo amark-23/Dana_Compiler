@@ -105,7 +105,9 @@
 
 [ \t\n\r]+              { /* Ignore spaces, tabs, and newlines */ } /*Whitespace*/
 
-.                       { fprintf(stderr, "error: illegal character\n"); exit(1); } /* --- Catch-All for Unknown Characters --- */
+.                       { fprintf(stderr, "error: illegal character '%c' (ASCII: %d) at line %d\n", yytext[0], yytext[0], yylineno); 
+                          exit(1); 
+                        } /* --- Catch-All for Unknown Characters --- */
 
 %%
 
