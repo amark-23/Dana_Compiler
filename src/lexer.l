@@ -77,39 +77,29 @@ int comment_depth = 0; /* nested comment handling */
 
 "#".*           { /* Ignore single-line comments */ }
 
-"(*"        {            /*multi - line comment handling*/
-    BEGIN(COMMENT); 
-    comment_depth = 1; 
-}
-
-<COMMENT>"(*" { comment_depth++; } /* --- In COMMENT state: Handle Nested Comments --- */
-<COMMENT>"*)" { 
-    if (--comment_depth == 0) 
-        BEGIN(INITIAL); /* Exit comment state */
-}
-
-<COMMENT>.    { /* Consume characters inside comment */ }
-<COMMENT>\n   { /* Keep track of new lines */ }
-
-<COMMENT><<EOF>> { /* --- ERROR: Unclosed Comment --- */
-    fprintf(stderr, "error: unclosed comment (missing '*)') at line %d\n", yylineno);
-    exit(1);
-}
-
+"(*"          { BEGIN(COMMENT); comment_depth = 1; }          /* Multi - line comment handling*/
+<COMMENT>"(*" { comment_depth++; }                            /* In COMMENT state: Handle Nested Comments */
+<COMMENT>"*)" { if (--comment_depth == 0) BEGIN(INITIAL);}    /* Exit comment state */
+<COMMENT>.    {}                                              /* Consume characters inside comment */ 
+<COMMENT>\n   {}                                              /* Keep track of new lines */ 
+<COMMENT><<EOF>> {  /* --- ERROR: Unclosed Comment --- */
+                    fprintf(stderr, "error: unclosed comment (missing '*)') at line %d\n", yylineno);
+                    exit(1);
+                 }
 
 [\+\-\*\/\%\=\&\!\<\>\(\)\[\]\,\:]  { return yytext[0]; } /* Use ASCII values */
 
-[a-zA-Z][a-zA-Z0-9_]*"["[0-9]+"]"  { return T_array; }
+[a-zA-Z][a-zA-Z0-9_]*"["[0-9]+"]"  { return T_array; }    /* Array */
 
-[0-9]+                  { return T_number; }   /* Digit */
+[0-9]+                  { return T_number; }              /* Digit */
 
-[a-zA-Z][a-zA-Z0-9_]*  { return T_id; }        /* Identifier */
+[a-zA-Z][a-zA-Z0-9_]*  { return T_id; }                   /* Identifier */
 
 "\""(\\[ntr0\'\"\\]|\\x[0-9a-fA-F]{2}|[^\"\n\\])*"\""  { return T_string; } /* --- String Literals (Single-line only, with escape sequences) --- */
 
-"'"([^'\\]|\\[ntr0\'\"\\]|\\x[0-9a-fA-F]{2})"'" { return T_char; } /* --- Character Constants (Supports all escape sequences) --- */
+"'"([^'\\]|\\[ntr0\'\"\\]|\\x[0-9a-fA-F]{2})"'" { return T_char; }          /* --- Character Constants (Supports all escape sequences) --- */
 
-[ \t\n\r]+              { /* Ignore spaces, tabs, and newlines */ } /*Whitespace*/
+[ \t\n\r]+              { /* Ignore spaces, tabs, and newlines */ }         /* Whitespace */
 
 .                       { 
                           fprintf(stderr, "error %d: illegal character '%c' (ASCII: %d) at line %d\n",T_UNKNOWN, yytext[0], yytext[0], yylineno); 
