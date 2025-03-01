@@ -105,7 +105,7 @@
 
 [ \t\n\r]+              { /* Ignore spaces, tabs, and newlines */ } /*Whitespace*/
 
-.                       { return T_UNKNOWN; } /* --- Catch-All for Unknown Characters --- */
+.                       { fprintf(stderr, "error: illegal character\n"); exit(1); } /* --- Catch-All for Unknown Characters --- */
 
 %%
 
