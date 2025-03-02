@@ -5,7 +5,7 @@ This document provides the full specifications of the **Dana** language, a simpl
 
 ---
 
-## 1 Description of the Dana Language
+## 1. Description of the Dana Language
 
 The Dana language is a simple imperative programming language. Its main features, in brief, are as follows:
 
@@ -357,7 +357,7 @@ These functions behave exactly like their namesakes in the C standard library (`
 
 ---
 
-## 2 Complete Grammar of Dana
+## 2. Complete Grammar of Dana
 
 The syntax of the Dana language is given below in EBNF form. The grammar that follows is ambiguous, but most ambiguities can be resolved by considering the precedence and associativity rules for operators (see Table 2). The symbols `<id>`, `<int-const>`, `<char-const>`, `<string-literal>`, and `<auto-end>` are terminal symbols of the grammar. The symbol `<auto-end>` is automatically inserted by the lexical analyzer based on the layout mechanism (see Section 1.6).
 
