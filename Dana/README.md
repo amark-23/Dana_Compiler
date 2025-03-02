@@ -1,4 +1,4 @@
-```markdown
+
 # Dana Language Specifications
 
 This document provides the full specifications of the **Dana** language, a simple imperative programming language. Below, you will find a detailed description of all language features, its lexical units, data types, program structure, expressions, statements, block structures, and the built-in library. A complete grammar in EBNF form is also included.
