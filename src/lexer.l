@@ -1,6 +1,8 @@
 %{
 #include "lexer.hpp"
 #include "parser.hpp"
+#include <stack>
+
 #define T_eof       0
 
 int comment_depth = 0; /* nested comment handling */
@@ -52,9 +54,8 @@ int comment_depth = 0; /* nested comment handling */
                     exit(1);
                  }
 
-[\+\-\*\/\%\=\&\!\<\>\(\)\[\]\,\:]  { return yytext[0]; } /* Use ASCII values */
 
-[a-zA-Z][a-zA-Z0-9_]*"["[0-9]+"]"  { return T_array; }    /* Array */
+[\+\-\*\/\%\=\&\!\<\>\(\)\[\]\,\:]  { return yytext[0]; } /* Use ASCII values */
 
 [0-9]+                  { return T_number; }              /* Digit */
 
@@ -63,6 +64,8 @@ int comment_depth = 0; /* nested comment handling */
 "\""(\\[ntr0\'\"\\]|\\x[0-9a-fA-F]{2}|[^\"\n\\])*"\""  { return T_string; } /* --- String Literals (Single-line only, with escape sequences) --- */
 
 "'"([^'\\]|\\[ntr0\'\"\\]|\\x[0-9a-fA-F]{2})"'" { return T_char; }          /* --- Character Constants (Supports all escape sequences) --- */
+
+
 
 [ \t\n\r]+              { /* Ignore spaces, tabs, and newlines */ }         /* Whitespace */
 

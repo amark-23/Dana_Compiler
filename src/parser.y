@@ -46,7 +46,7 @@ extern char **yytext;
 %token T_asgn      ":="
 %token T_number
 %token T_id
-%token T_array
+//%token T_array
 %token T_char
 %token T_string
 
@@ -80,25 +80,25 @@ func_def
     : T_def header local_defs block
     ;
 
-/* Header includes function name, optional return type, and parameters */
+/* ---- Headers & Parameters ---- */
 header
     : T_id header_options
     ;
 
 header_options
-    : /* Empty */
-    | T_is data_type maybe_params
-    | maybe_params
+    : "is" data_type explicit_params
+    | "is" data_type
+    | explicit_params
+    | /* Empty */
     ;
+
+explicit_params
+    : ':' fpar_def fpar_def_list
+    ;  /* REMOVED empty rule */
 
 /* Function parameters */
-maybe_params
-    : /* Empty */
-    | ':' fpar_def fpar_def_list
-    ;
-
 fpar_def
-    : id_list T_as fpar_type
+    : id_list "as" fpar_type
     ;
 
 fpar_def_list
@@ -118,20 +118,14 @@ fpar_type
     | data_type '[' ']' dims
     ;
 
-/* The type system now supports arrays explicitly */
 type
-    : data_type
-    | array_type
-    ;
-
-array_type
-    : data_type dims
-    | T_array  /* Match arrays like: x[10], arr[5][5] */
+    : data_type  /* Simple type */
+    | data_type '[' T_number ']' dims  /* Array type */
     ;
 
 dims
     : /* Empty */  
-    | '[' T_number ']' dims
+    | '[' T_number ']' dims  /* Ensures arrays are handled consistently */
     ;
 
 /* Data types */
@@ -249,12 +243,6 @@ expr
     | expr '%' expr
     | expr '&' expr
     | expr '|' expr
-    | expr '=' expr
-    | expr T_neq expr
-    | expr '<' expr
-    | expr '>' expr
-    | expr T_lte expr
-    | expr T_gte expr
     | "true"
     | "false"
     ;
