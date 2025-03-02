@@ -293,5 +293,5 @@ int main() {
 
 void yyerror(const char *msg) {
     fprintf(stderr, "Syntax Error: %s at line %d (Unexpected token: \"%s\")\n", msg, yylineno, (char*) yytext);
-    exit(1); /* You can change this to handle multiple errors gracefully */
+    exit(1);
 }
