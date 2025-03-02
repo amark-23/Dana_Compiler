@@ -62,6 +62,7 @@ extern char **yytext;
 %left '*' '/' '%'
 %left '=' T_neq T_lte T_gte '<' '>'
 %right UMINUS  /* For unary minus/plus */
+%right '!'
 
 /* The parser’s start symbol */
 %start program
