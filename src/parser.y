@@ -4,7 +4,6 @@
 #include <cstdlib>
 #include "lexer.hpp"
 /* Forward declarations for helper functions, AST node creation, etc. */
-// e.g., void yyerror(const char *s);
 extern int yylineno;
 extern char **yytext;
 %}
@@ -13,7 +12,7 @@ extern char **yytext;
 %union {
     int ival;         /* For T_number values */
     char *sval;       /* For T_id, T_string, etc. */
-    /* Later you can add pointers for AST nodes, e.g. ASTNode* node; */
+    /* Later add pointers for AST nodes, e.g. ASTNode* node; */
 }
 
 /* Dana’s tokens */
