@@ -56,14 +56,16 @@ extern char **yytext;
 /*might need adjustment */
 %left T_or
 %left T_and
-%left T_not
-%left '|' '&'
-%left '+' '-'
-%left '*' '/' '%'
-%left '=' T_neq T_lte T_gte '<' '>'
-%right UMINUS  /* For unary minus/plus */
-%right '!'
 
+%left '=' T_neq T_lte T_gte '<' '>'
+%left '+' '-' '|'
+%left '*' '/' '%' '&'
+%right '!' T_not
+%right UMINUS  /* For unary minus/plus */
+
+
+%debug
+%defines
 /* The parser’s start symbol */
 %start program
 
@@ -284,6 +286,7 @@ cond
 /* ------- C/C++ Code Section ------- */
 
 int main() {
+    //yydebug = 1;
     int result = yyparse();
     if (result ==0) printf("Success.\n");
 }
