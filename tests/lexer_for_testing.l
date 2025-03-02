@@ -1,7 +1,40 @@
 %{
-#include "lexer.hpp"
-#include "parser.hpp"
 #define T_eof       0
+#define T_as        1000
+#define T_begin     1001
+#define T_break     1002
+#define T_byte      1003
+#define T_continue  1004
+#define T_decl      1005
+#define T_def       1006
+#define T_elif      1007
+#define T_else      1008
+#define T_end       1009
+#define T_exit      1010
+#define T_false     1011
+#define T_if        1012
+#define T_is        1013
+#define T_int       1014
+#define T_loop      1015
+#define T_not       1016
+#define T_or        1017
+#define T_ref       1018
+#define T_return    1019
+#define T_skip      1020
+#define T_true      1021
+#define T_var       1022
+#define T_number    1023
+#define T_id        1024
+#define T_UNKNOWN   1025
+#define T_and       1026
+#define T_eq        1027
+#define T_neq       1028
+#define T_lte       1029
+#define T_gte       1030
+#define T_char      1031
+#define T_string    1032
+#define T_asgn      1033
+#define T_array     1034
 
 int comment_depth = 0; /* nested comment handling */
 %}
@@ -10,6 +43,8 @@ int comment_depth = 0; /* nested comment handling */
 %x COMMENT 
 
 %%
+
+
 "as"        { return T_as; }       /*Keyword Matching*/
 "begin"     { return T_begin; }
 "break"     { return T_break; }
@@ -48,7 +83,7 @@ int comment_depth = 0; /* nested comment handling */
 <COMMENT>.    {}                                              /* Consume characters inside comment */ 
 <COMMENT>\n   {}                                              /* Keep track of new lines */ 
 <COMMENT><<EOF>> {  /* --- ERROR: Unclosed Comment --- */
-                    fprintf(stderr, "Lexer Error: Unclosed comment (missing '*)') at line %d\n", yylineno);
+                    fprintf(stderr, "error: unclosed comment (missing '*)') at line %d\n", yylineno);
                     exit(1);
                  }
 
@@ -67,9 +102,16 @@ int comment_depth = 0; /* nested comment handling */
 [ \t\n\r]+              { /* Ignore spaces, tabs, and newlines */ }         /* Whitespace */
 
 .                       { 
-                          fprintf(stderr, "Lexer Error: Illegal character '%c' (ASCII: %d) at line %d\n", yytext[0], yytext[0], yylineno); 
+                          fprintf(stderr, "error %d: illegal character '%c' (ASCII: %d) at line %d\n",T_UNKNOWN, yytext[0], yytext[0], yylineno); 
                           exit(1); 
                         } /* --- Catch-All for Unknown Characters --- */
 
 %%
 
+int main() { //delete later
+    int token;
+    do {
+        token = yylex();
+        printf("token=%d, lexeme=\"%s\"\n", token, yytext);
+    } while (token != T_eof);
+}

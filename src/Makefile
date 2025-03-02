@@ -1,25 +1,23 @@
-# Minimal Makefile for a Flex-based C++ lexer
+CC=gcc
+CFLAGS=-Wall -std=c++11
 
-# Our final executable
-TARGET = lexer
+default: danac
 
-# Source and generated files
-LEXER_SRC = lexer.l
-LEXER_OUT = lexer.cpp
+lexer.cpp: lexer.l
+	flex -s -o lexer.cpp lexer.l
 
-# Compiler and flags
-CXX = c++
-CXXFLAGS = -std=c++11
+lexer.o: lexer.cpp lexer.hpp parser.hpp
 
-all: $(TARGET)
+parser.hpp parser.cpp: parser.y
+	bison -dv -o parser.cpp parser.y
 
-# Rule to generate lexer.cpp from lexer.l
-$(LEXER_OUT): $(LEXER_SRC)
-	flex -o $(LEXER_OUT) $(LEXER_SRC)
+parser.o: parser.cpp lexer.hpp
 
-# Rule to compile the generated lexer.cpp into our final executable
-$(TARGET): $(LEXER_OUT)
-	$(CXX) $(CXXFLAGS) -o $(TARGET) $(LEXER_OUT)
+danac: lexer.o parser.o
+	$(CC) $(CFLAGS) -o danac lexer.o parser.o
 
 clean:
-	rm -f $(TARGET) $(LEXER_OUT)
+	$(RM) lexer.cpp parser.cpp parser.hpp parser.output *.o
+
+distclean: clean
+	$(RM) danac
