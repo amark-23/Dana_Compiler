@@ -1,3 +1,5 @@
+(* This prob cant work to test parser*)
+
 (* Define a function using the reddragen keyword *)
 reddragen computePower : vardos num as int, vardos factor as byte
     vardos result as int
@@ -39,3 +41,6 @@ reddragen main :
     # Single-line comment ignored
     vardos finalMessage as string := "Execution finished.\n"
     reddragen print(finalMessage)
+(*
+
+$$$$$$$$$ should not work
