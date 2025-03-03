@@ -1,0 +1,13 @@
+def main
+  def check is int: n as int
+    return: n
+
+  var x y is int
+  x := 5
+  y := 10
+
+  if x > y:
+    writeString: "x is greater\n"
+
+  if check(x):
+    writeString: "Function call in condition\n"
