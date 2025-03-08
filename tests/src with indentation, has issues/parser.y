@@ -43,7 +43,7 @@ void yyerror(const char* msg);
 %token T_ref "ref"
 %token T_lte "<="
 %token T_gte ">="
-%token T_neq "!="
+%token T_neq "<>"
 %token T_asgn ":="
 
 %left T_or
