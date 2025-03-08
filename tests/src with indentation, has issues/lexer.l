@@ -56,7 +56,7 @@ void emitAutoEnd();
 "!="      { return T_neq; }
 "<="      { return T_lte; }
 ">="      { return T_gte; }
-":="      { return T_asgn; }
+"<>"      { return T_asgn; }
 
 [\+\-\*\/\%\=\&\!\<\>\(\)\[\]\,\:\{\}\|]  { return yytext[0]; }
 
