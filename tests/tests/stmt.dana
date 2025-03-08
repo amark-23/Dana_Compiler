@@ -1,8 +1,0 @@
-def main
-  var x is int
-  x := 10
-  
-  if x > 5:
-    writeString: "Greater than 5\n"
-  else:
-    writeString: "Not greater than 5\n"

@@ -1,4 +1,4 @@
-CC=g++
+CC=gcc
 CFLAGS=-Wall -std=c++11
 
 default: danac

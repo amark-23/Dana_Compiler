@@ -1,7 +1,0 @@
-def main
-  var x is int
-  var s is byte [80]
-  decl helper
-begin
-  skip
-end

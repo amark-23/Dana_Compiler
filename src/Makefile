@@ -1,23 +1,25 @@
+.PHONY: clean distclean default
+
 CC=gcc
-CFLAGS=-Wall -std=c++11
+CFLAGS=-Wall
 
-default: danac
+default: dana
 
-lexer.cpp: lexer.l
-	flex -s -o lexer.cpp lexer.l
+lexer.c: lexer.l
+	flex -s -o lexer.c lexer.l
 
-lexer.o: lexer.cpp lexer.hpp parser.hpp
+lexer.o: lexer.c parser.h
 
-parser.hpp parser.cpp: parser.y
-	bison -dv -o parser.cpp parser.y
+parser.h parser.c: parser.y
+	bison -dv -o parser.c parser.y
 
-parser.o: parser.cpp lexer.hpp
+parser.o: parser.c
 
-danac: lexer.o parser.o
-	$(CC) $(CFLAGS) -o danac lexer.o parser.o
+dana: lexer.o parser.o
+	$(CC) $(CFLAGS) -o dana $^ -lfl
 
 clean:
-	$(RM) lexer.cpp parser.cpp parser.hpp parser.output *.o
+	$(RM) lexer.c parser.c parser.h parser.output *.o *~
 
 distclean: clean
-	$(RM) danac
+	$(RM) dana

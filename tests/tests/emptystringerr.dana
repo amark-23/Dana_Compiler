@@ -1,8 +1,0 @@
-def main
-  def nested: x as int
-    writeString: "Inside nested function\n"
-
-  if 5 > 2:
-    nested: 1
-
-    writeString: "After function call\n"
