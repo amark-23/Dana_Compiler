@@ -1,4 +1,4 @@
-.PHONY: clean distclean default
+.PHONY: clean distclean default test
 
 CC=gcc
 CFLAGS=-Wall
@@ -17,6 +17,16 @@ parser.o: parser.c
 
 dana: lexer.o parser.o
 	$(CC) $(CFLAGS) -o dana $^ -lfl
+
+test:
+	@echo "Running tests on all .dana files in ../tests/ directory..."
+	@for file in ../tests/*.dana; do \
+		if [ -f "$$file" ]; then \
+			echo "Testing: $$file"; \
+			./dana < "$$file"; \
+			echo ""; \
+		fi \
+	done
 
 clean:
 	$(RM) lexer.c parser.c parser.h parser.output *.o *~

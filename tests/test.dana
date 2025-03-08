@@ -1,0 +1,8 @@
+def main
+    def inner: x as int
+        if x > 0:
+            inner: x-1
+
+    var num is int
+    num := 5
+    inner: num
