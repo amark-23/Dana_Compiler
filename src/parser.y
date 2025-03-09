@@ -3,6 +3,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+// ANSI color codes
+#define RED "\033[1;31m"
+#define GREEN "\033[1;32m"
+#define RESET "\033[0m"
+
 extern int yylineno;
 extern char* yytext;
 extern unsigned int *indent_stack;  
@@ -48,15 +53,13 @@ extern void stackinit();
 %token auto_end
 
 %nonassoc "def" "if" "loop" "break" "continue" "return"
-%nonassoc '=' "<>" '<' '>' "<=" ">=" '!'
-%left "or"
-%left "and"
-%left '|'
-%left '&'
+%nonassoc "not" '!'
+%left '*' '/' '%' '&'
 %left '+' '-'
-%left '*' '/' '%' 
-%nonassoc "not" 
-%nonassoc  '(' ')'
+%left '|'
+%nonassoc '=' "<>" '<' '>' "<=" ">="
+%left "and"
+%left "or"
 
 
 %expect 1
@@ -114,16 +117,15 @@ expr_list: expr | expr ',' expr_list;
 %%
 
 void yyerror(const char *msg) {
-    fprintf(stderr, "Syntax Error: %s at line %d\n", msg, yylineno);
+    fprintf(stderr, RED "%s" RESET " at line " RED "%d" RESET " : " RED "%s\n" RESET, msg, yylineno, yytext);
 }
 
 int main() {
     stackinit(); 
     int result = yyparse();
-    if (result == 0)
-        printf("Success.\n");
-    else
-        printf("Parsing failed.\n");
+    printf("\n");
+    if (result == 0) printf("Parsing " GREEN "Successful.\n\n" RESET);
+    else printf("Parsing " RED "failed.\n\n" RESET);
 
     free(indent_stack);
     return result;

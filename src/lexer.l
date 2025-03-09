@@ -5,6 +5,8 @@
 #include <string.h>
 
 #define T_eof 0
+#define RED "\033[1;31m"
+#define RESET "\033[0m"
 
 int comment_depth = 0; //nested comment handling
 
@@ -84,10 +86,9 @@ D [0-9]
 
 [\(\)\[\]\,\+\-\*\/\%\!\&\|\=\<\>\:] { return yytext[0]; }
 
-{L}({L}|{D})* { return T_id; }
+{L}({L}|{D}|_)* { return T_id; }
 {D}+ { return T_number; }
-\'({L}|{D}|\\[ntr0\\\'\"]\') { return T_const; }
-\'\\x[0-9a-fA-F]{2}\' { return T_const; }
+\'([^\'\"\\]|\\[ntr0\\\'\"\\]|\\x[0-9a-fA-F]{2})\' { return T_const; }
 \"([^\"\n]|\\.)*\" { return T_string; }
 
 [ \t]+ { ; } 												  /* Ignore spaces and tabs */
@@ -99,7 +100,7 @@ D [0-9]
 <COMMENT>.    {}                                              /* Consume characters inside comment */ 
 <COMMENT>\n   {}                                              /* Keep track of new lines */ 
 <COMMENT><<EOF>> {                                            /* ERROR: Unclosed Comment */
-    fprintf(stderr, "Lexer Error: Unclosed comment (missing '*)') at line %d\n", yylineno);
+    fprintf(stderr, RED "Lexer Error " RESET ": Unclosed comment (missing '*)') at line %d\n", yylineno);
     exit(1);
 }
 
@@ -140,7 +141,8 @@ D [0-9]
     return 0; 
 }
 
-. { printf("Lexer Error: Unrecognized character: %s at line %d/n", yytext, yylineno); }
+. { printf( RED "lexer error: " RESET "Unrecognized character: " RED "%s " RESET  "at line" RED "%d\n" RESET, yytext, yylineno); }
+
 %%
 
 void stackinit() {
