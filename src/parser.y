@@ -114,7 +114,7 @@ expr_list: expr | expr ',' expr_list;
 %%
 
 void yyerror(const char *msg) {
-    fprintf(stderr, "Error: %s at line %d\n", msg, yylineno);
+    fprintf(stderr, "Syntax Error: %s at line %d\n", msg, yylineno);
 }
 
 int main() {
