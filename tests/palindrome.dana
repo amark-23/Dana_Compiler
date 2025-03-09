@@ -1,0 +1,32 @@
+def main
+  def isPalindrome is byte: s as byte []
+    var i j is int
+    
+    i := 0
+    j := strlen(s) - 1
+    
+    loop:
+      if i >= j:
+        break
+      
+      if s[i] <> s[j]:
+        return: false
+      
+      i := i + 1
+      j := j - 1
+    
+    return: true
+  
+  var input is byte [100]
+  
+  writeString: "Enter a string: "
+  readString: 100, input
+  
+  if isPalindrome(input):
+    writeString: "The string \""
+    writeString: input
+    writeString: "\" is a palindrome.\n"
+  else:
+    writeString: "The string \""
+    writeString: input
+    writeString: "\" is not a palindrome.\n"
