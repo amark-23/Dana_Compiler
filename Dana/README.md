@@ -5,11 +5,11 @@ This document provides the full specifications of the **Dana** language, a simpl
 
 You can also find some example programs in this directory:
 
-   -bubblesort.dana    : the BubbleSort algorithm
-   -hanoi.dana         : the well-known Towers of Hanoi problem
-   -helloworld.dana    : typical hello world! program
-   -primes.dana        : prints primes between 1 and n
-   -reversestring.dana : reverses a string
+   - bubblesort.dana    : the BubbleSort algorithm
+   - hanoi.dana         : the well-known Towers of Hanoi problem
+   - helloworld.dana    : typical hello world! program
+   - primes.dana        : prints primes between 1 and n
+   - reversestring.dana : reverses a string
 
 ---
 
