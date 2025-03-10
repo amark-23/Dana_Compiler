@@ -123,8 +123,8 @@ void yyerror(const char *msg) {
 int main() {
     stackinit(); 
     int result = yyparse();
-    printf("\n");
-    if (result == 0) printf("Parsing " GREEN "Successful.\n\n" RESET);
+    // printf("\n");
+    if (result == 0) printf("Parsing " GREEN "Successful.\n" RESET);
     else printf("Parsing " RED "failed.\n\n" RESET);
 
     free(indent_stack);

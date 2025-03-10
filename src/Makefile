@@ -22,9 +22,8 @@ test:
 	@echo "Running tests on all .dana files in ../Dana/ directory..."
 	@for file in ../Dana/*.dana; do \
 		if [ -f "$$file" ]; then \
-			echo "Testing: $$file"; \
+			echo "\nTesting: $$file"; \
 			./dana < "$$file"; \
-			echo ""; \
 		fi \
 	done
 
