@@ -1,5 +1,5 @@
 %{
-#include "lexer.hpp"
+#include "lexer.h"
 #include <stdio.h>
 #include <stdlib.h>
 

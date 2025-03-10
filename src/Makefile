@@ -19,8 +19,8 @@ dana: lexer.o parser.o
 	$(CC) $(CFLAGS) -o dana $^ -lfl
 
 test:
-	@echo "Running tests on all .dana files in ../tests/ directory..."
-	@for file in ../tests/*.dana; do \
+	@echo "Running tests on all .dana files in ../Dana/ directory..."
+	@for file in ../Dana/*.dana; do \
 		if [ -f "$$file" ]; then \
 			echo "Testing: $$file"; \
 			./dana < "$$file"; \
