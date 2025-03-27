@@ -1,7 +1,7 @@
 %{
-#include "lexer.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "lexer.hpp"
+#include <cstdio>
+#include <cstdlib>
 
 // ANSI color codes
 #define RED "\033[1;31m"

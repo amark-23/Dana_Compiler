@@ -1,8 +1,8 @@
 %{
-#include "lexer.h"
-#include "parser.h"
-#include <stdio.h>
-#include <string.h>
+#include "lexer.hpp"
+#include "parser.hpp"
+#include <cstdio>
+#include <cstring>
 
 #define T_eof 0
 #define RED "\033[1;31m"

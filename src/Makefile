@@ -5,15 +5,15 @@ CFLAGS=-Wall
 
 default: dana
 
-lexer.c: lexer.l
-	flex -s -o lexer.c lexer.l
+lexer.cpp: lexer.l
+	flex -s -o lexer.cpp lexer.l
 
-lexer.o: lexer.c parser.h
+lexer.o: lexer.cpp parser.hpp
 
-parser.h parser.c: parser.y
-	bison -dv -o parser.c parser.y
+parser.hpp parser.cpp: parser.y
+	bison -dv -o parser.cpp parser.y
 
-parser.o: parser.c
+parser.o: parser.cpp
 
 dana: lexer.o parser.o
 	$(CC) $(CFLAGS) -o dana $^ -lfl
@@ -28,7 +28,7 @@ test:
 	done
 
 clean:
-	$(RM) lexer.c parser.c parser.h parser.output *.o *~
+	$(RM) lexer.cpp parser.cpp parser.hpp parser.output *.o *~
 
 distclean: clean
 	$(RM) dana
