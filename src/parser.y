@@ -1,4 +1,5 @@
 %{
+#include "ast.hpp"
 #include "lexer.hpp"
 #include <cstdio>
 #include <cstdlib>
@@ -46,73 +47,181 @@ extern void stackinit();
 %token T_leq "<="
 %token T_neq "<>"
 
+%token<var> T_id  
+%token<num> T_number    
 %token T_const
-%token T_id  
-%token T_number    
 %token T_string
 %token auto_end
 
 %nonassoc "def" "if" "loop" "break" "continue" "return"
 %nonassoc "not" '!'
-%left '*' '/' '%' '&'
-%left '+' '-'
-%left '|'
 %nonassoc '=' "<>" '<' '>' "<=" ">="
+%left<op> '*' '/' '%' '&'
+%left<op> '+' '-'
+%left<op> '|'
 %left "and"
 %left "or"
 
+%union{
+  Stmt *stmt;
+  Expr *expr;
+  Block *blck;
+  Func *fnc;
+  char var;
+  int  num;
+  char op;
+}
+
+%type<stmt> stmt
+%type<expr> expr
+%type<blck> stmt_list
 
 %expect 1
+
 %%
-program: func_def;
 
-func_def: T_def header local_def_list auto_end;
+program : func_def                                                                              {  }
+        ;
 
-func_decl: T_decl header;
+func_def  : T_def header local_def_list auto_end                                                {  }
+          ;
 
-header: T_id "is" type ':' opt_fpar | T_id "is" type | T_id ':' opt_fpar | T_id;
+func_decl : T_decl header                                                                       {  }
+          ;
 
-opt_fpar: id_list "as" ref_data_type | id_list "as" ref_data_type ',' opt_fpar | id_list "as" fpar_type | id_list "as" fpar_type ',' opt_fpar;
+header  : T_id "is" type ':' opt_fpar                                                           {  }
+        | T_id "is" type                                                                        {  }
+        | T_id ':' opt_fpar                                                                     {  }
+        | T_id                                                                                  {  }
+        ;
 
-fpar_type: "int" | "byte" | array_type;
+opt_fpar  : id_list "as" ref_data_type                                                          {  }
+          | id_list "as" ref_data_type ',' opt_fpar                                             {  }
+          | id_list "as" fpar_type                                                              {  }
+          | id_list "as" fpar_type ',' opt_fpar                                                 {  }
+          ;
 
-ref_data_type: "ref" "int" | "ref" "byte";
+fpar_type : "int"                                                                               {  }
+          | "byte"                                                                              {  }
+          | array_type                                                                          {  }
+          ;
 
-array_type: "int" '[' ']' | "byte" '[' ']' | "int" '[' T_number ']' | "byte" '[' T_number ']' | array_type '[' T_number ']';
+ref_data_type : "ref" "int"                                                                     {  }
+              | "ref" "byte"                                                                    {  }
+              ;
 
-stmt_list: stmt | stmt stmt_list;
+array_type  : "int" '[' ']'                                                                     {  }
+            | "byte" '[' ']'                                                                    {  }
+            | "int" '[' T_number ']'                                                            {  }
+            | "byte" '[' T_number ']'                                                           {  }
+            | array_type '[' T_number ']'                                                       {  }
+            ;
 
-data_type: "int" | "byte";
+stmt_list : stmt                                                                                {  }
+          | stmt stmt_list                                                                      {  } 
+          ;
 
-type: type '[' T_number ']' | data_type;
+data_type : "int"                                                                               {  }
+          | "byte"                                                                              {  }
+          ;
 
-local_def_list: "begin" stmt_list "end" | stmt_list | local_def local_def_list;
+type  : type '[' T_number ']'                                                                   {  }
+      | data_type                                                                               {  }
+      ;
 
-local_def: func_def | func_decl | "var" id_list "is" type;
+local_def_list  : "begin" stmt_list "end"                                                       {  }
+                | stmt_list                                                                     {  }
+                | local_def local_def_list                                                      {  }
+                ;
 
-stmt: "skip" | l_value ":=" expr | func_call | proc_call | "exit" | "return" ':' expr | if_stmts | loop | "break" | "break" ':' T_id | "continue" | "continue" ':' T_id;
+local_def : func_def                                                                            {  }
+          | func_decl                                                                           {  }
+          | "var" id_list "is" type                                                             {  }
+          ;
 
-if_stmts: "if" cond ':' stmt_list auto_end "else" ':' stmt_list auto_end | "if" cond ':' stmt_list auto_end "elif" cond ':' stmt_list auto_end opt_elif_else | "if" cond ':' stmt_list auto_end;
+stmt  : "skip"                                                                                  {  }
+      | l_value ":=" expr                                                                       {  }
+      | func_call                                                                               {  }      
+      | proc_call                                                                               {  }
+      | "exit"                                                                                  {  }
+      | "return" ':' expr                                                                       {  }
+      | if_stmts                                                                                {  }
+      | loop                                                                                    {  }
+      | "break"                                                                                 {  }
+      | "break" ':' T_id                                                                        {  }
+      | "continue"                                                                              {  }
+      | "continue" ':' T_id                                                                     {  }
+      ;
 
-loop: "loop" T_id ':' stmt_list auto_end | "loop" ':' stmt_list auto_end;
+if_stmts  : "if" cond ':' stmt_list auto_end "else" ':' stmt_list auto_end                      {  }
+          | "if" cond ':' stmt_list auto_end "elif" cond ':' stmt_list auto_end opt_elif_else   {  }
+          | "if" cond ':' stmt_list auto_end                                                    {  }
+          ;
 
-opt_elif_else: /* empty */ | "elif" cond ':' stmt_list auto_end opt_elif_else | "else" ':' stmt_list auto_end;
+loop  : "loop" T_id ':' stmt_list auto_end                                                      {  }
+      | "loop" ':' stmt_list auto_end                                                           {  }
+      ;
 
-proc_call: T_id | T_id ':' expr_list;
+opt_elif_else : /* empty */                                                                     {  }
+              | "elif" cond ':' stmt_list auto_end opt_elif_else                                {  }
+              | "else" ':' stmt_list auto_end                                                   {  }
+              ;
 
-func_call: T_id '('')' | T_id '(' expr_list ')';
+proc_call : T_id                                                                                {  }
+          | T_id ':' expr_list                                                                  {  }
+          ;
 
-l_value: T_id | T_string | l_value '[' expr ']';
+func_call : T_id '('')'                                                                         {  }
+          | T_id '(' expr_list ')'                                                              {  }
+          ;
 
-expr: T_number | T_const | l_value | '(' expr ')' | func_call | '+' expr | '-' expr | expr '+' expr | expr '-' expr | expr '*' expr | expr '/' expr | expr '%' expr | "true" | "false" | '!' expr | expr '&' expr | expr '|' expr;
+l_value : T_id                                                                                  {  }
+        | T_string                                                                              {  }
+        | l_value '[' expr ']'                                                                  {  }
+        ;
 
-cond: expr rel_op expr | cond "and" cond | cond "or" cond | "not" cond | '(' cond ')' | expr;
+expr  : T_number                                                                                {  }
+      | T_const                                                                                 {  }
+      | l_value                                                                                 {  }
+      | func_call                                                                               {  }
+      | '(' expr ')'                                                                            {  }
+      | '+' expr                                                                                {  }
+      | '-' expr                                                                                {  }
+      | '!' expr                                                                                {  }
+      | expr '+' expr                                                                           {  }
+      | expr '-' expr                                                                           {  }
+      | expr '*' expr                                                                           {  }
+      | expr '/' expr                                                                           {  }
+      | expr '%' expr                                                                           {  }
+      | expr '&' expr                                                                           {  }
+      | expr '|' expr                                                                           {  }
+      | "true"                                                                                  {  }
+      | "false"                                                                                 {  }
+      ;
 
-rel_op: '>' | '<' | ">=" | "<=" | '=' | "<>";
+cond  : expr rel_op expr                                                                        {  }
+      | cond "and" cond                                                                         {  }
+      | cond "or" cond                                                                          {  }
+      | "not" cond                                                                              {  }
+      | '(' cond ')'                                                                            {  }
+      | expr                                                                                    {  }
+      ;
 
-id_list: T_id | id_list T_id;
+rel_op  : '>'                                                                                   {  }
+        | '<'                                                                                   {  }
+        | ">="                                                                                  {  }
+        | "<="                                                                                  {  }
+        | '='                                                                                   {  }
+        | "<>"                                                                                  {  }
+        ;
 
-expr_list: expr | expr ',' expr_list;
+id_list : T_id                                                                                  {  }
+        | id_list T_id                                                                          {  }
+        ;
+
+expr_list : expr                                                                                {  }
+          | expr ',' expr_list                                                                  {  }
+          ;
 
 %%
 

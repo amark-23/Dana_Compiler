@@ -1,4 +1,5 @@
 %{
+#include "ast.hpp"
 #include "lexer.hpp"
 #include "parser.hpp"
 #include <cstdio>
@@ -84,22 +85,20 @@ D [0-9]
 "<="       { return T_leq; }
 "<>"       { return T_neq; }
 
-[\(\)\[\]\,\+\-\*\/\%\!\&\|\=\<\>\:] { return yytext[0]; }
+[\(\)\[\]\,\+\-\*\/\%\!\&\|\=\<\>\:]                            { yylval.op = yytext[0]; return yytext[0]; }
+{L}({L}|{D}|_)*                                                 { yylval.var = yytext[0]; return T_id; }
+{D}+                                                            { yylval.num = atoi(yytext); return T_number; }
+\'([^\'\"\\]|\\[ntr0\\\'\"\\]|\\x[0-9a-fA-F]{2})\'              { return T_const; }
+\"([^\"\n]|\\.)*\"                                              { return T_string; }
 
-{L}({L}|{D}|_)* { return T_id; }
-{D}+ { return T_number; }
-\'([^\'\"\\]|\\[ntr0\\\'\"\\]|\\x[0-9a-fA-F]{2})\' { return T_const; }
-\"([^\"\n]|\\.)*\" { return T_string; }
-
-[ \t]+ { ; } 												  /* Ignore spaces and tabs */
-
-^[ \t]*(#.*)?\n { ; }                                         /* Single-line comments, blank lines*/
-"(*" { BEGIN(COMMENT); comment_depth = 1; }                   /* Multi-line comment handling */
-<COMMENT>"(*" { comment_depth++; }                            /* Handle Nested Comments */
-<COMMENT>")*" { if (--comment_depth == 0) BEGIN(INITIAL);}    /* Exit comment state */
-<COMMENT>.    {}                                              /* Consume characters inside comment */ 
-<COMMENT>\n   {}                                              /* Keep track of new lines */ 
-<COMMENT><<EOF>> {                                            /* ERROR: Unclosed Comment */
+[ \t]+ { ; } 												    /* Ignore spaces and tabs */
+^[ \t]*(#.*)?\n { ; }                                           /* Single-line comments, blank lines*/
+"(*" { BEGIN(COMMENT); comment_depth = 1; }                     /* Multi-line comment handling */
+<COMMENT>"(*" { comment_depth++; }                              /* Handle Nested Comments */
+<COMMENT>")*" { if (--comment_depth == 0) BEGIN(INITIAL);}      /* Exit comment state */
+<COMMENT>.    {}                                                /* Consume characters inside comment */ 
+<COMMENT>\n   {}                                                /* Keep track of new lines */ 
+<COMMENT><<EOF>> {                                              /* ERROR: Unclosed Comment */
     fprintf(stderr, RED "Lexer Error " RESET ": Unclosed comment (missing '*)') at line %d\n", yylineno);
     exit(1);
 }
