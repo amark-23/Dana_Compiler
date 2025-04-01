@@ -17,7 +17,17 @@ extern size_t level;
 extern void stackinit();
 
 %}
- 
+
+%union{
+  Stmt *stmt;
+  Expr *expr;
+  Block *blck;
+  Func *fnc;
+  char var;
+  int  num;
+  char op;
+}
+
 %token T_and "and"
 %token T_as "as"
 %token T_begin "begin"
@@ -62,15 +72,7 @@ extern void stackinit();
 %left "and"
 %left "or"
 
-%union{
-  Stmt *stmt;
-  Expr *expr;
-  Block *blck;
-  Func *fnc;
-  char var;
-  int  num;
-  char op;
-}
+
 
 %type<stmt> stmt
 %type<expr> expr
