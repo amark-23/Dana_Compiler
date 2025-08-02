@@ -1,2 +1,11 @@
 # Ignore the vscode/ folder
 /.vscode
+
+#Ignore the dana generated files
+src/dana
+src/lexer.cpp
+src/lexer.o
+src/parser.cpp
+src/parser.o
+src/parser.hpp
+src/parser.output

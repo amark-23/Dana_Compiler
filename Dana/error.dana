@@ -1,0 +1,3 @@
+def errorFunc
+	var i is int
+	var x y z int
