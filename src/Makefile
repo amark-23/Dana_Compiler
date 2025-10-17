@@ -1,6 +1,6 @@
 .PHONY: clean distclean default test
 
-CC=gcc
+CC=g++
 CFLAGS=-Wall
 
 default: dana
@@ -8,14 +8,16 @@ default: dana
 lexer.cpp: lexer.l
 	flex -s -o lexer.cpp lexer.l
 
-lexer.o: lexer.cpp parser.hpp
+lexer.o: lexer.cpp parser.hpp ast.hpp
 
 parser.hpp parser.cpp: parser.y
 	bison -dv -o parser.cpp parser.y
 
-parser.o: parser.cpp
+parser.o: parser.cpp ast.hpp
 
-dana: lexer.o parser.o
+ast.o: ast.cpp ast.hpp
+
+dana: lexer.o parser.o ast.o
 	$(CC) $(CFLAGS) -o dana $^ -lfl
 
 test:

@@ -47,57 +47,58 @@ int process_indent(char* line) {
 }
 %}
 
-L [A-Za-z]
-D [0-9]
+I    [a-zA-Z_][a-zA-Z0-9_]*
+H    [0-9A-Fa-f]
+E    \\(n|t|r|0|\\|\'|\"|x{H}{H})
 
 %option noyywrap yylineno noinput
 %x COMMENT
 
 %%
 
-"def"  { leader = 1; indent_stack[++level] = current_indent; return T_def; } 
-"elif" { leader = 1; indent_stack[++level] = current_indent; return T_elif; } 
-"else" { leader = 1; indent_stack[++level] = current_indent; return T_else; } 
+"def"  { leader = 1; indent_stack[++level] = current_indent; return T_def; }
+"elif" { leader = 1; indent_stack[++level] = current_indent; return T_elif; }
+"else" { leader = 1; indent_stack[++level] = current_indent; return T_else; }
 "if"   { leader = 1; indent_stack[++level] = current_indent; return T_if; }
-"loop" { leader = 1; indent_stack[++level] = current_indent; return T_loop; } 
+"loop" { leader = 1; indent_stack[++level] = current_indent; return T_loop; }
 
-"and"      { return T_and; } 
-"as"       { return T_as; } 
-"begin"    { return T_begin; } 
-"break"    { return T_break; } 
-"byte"     { return T_byte; } 
-"continue" { return T_continue; } 
+"and"      { return T_and; }
+"as"       { return T_as; }
+"begin"    { return T_begin; }
+"break"    { return T_break; }
+"byte"     { return T_byte; }
+"continue" { return T_continue; }
 "decl"     { return T_decl; }
-"end"      { return T_end; } 
-"exit"     { return T_exit; } 
-"false"    { return T_false; } 
-"is"       { return T_is; } 
-"int"      { return T_int; } 
-"not"      { return T_not; } 
-"or"       { return T_or; } 
-"ref"      { return T_ref; } 
+"end"      { return T_end; }
+"exit"     { return T_exit; }
+"false"    { return T_false; }
+"is"       { return T_is; }
+"int"      { return T_int; }
+"not"      { return T_not; }
+"or"       { return T_or; }
+"ref"      { return T_ref; }
 "return"   { return T_return; }
-"skip"     { return T_skip; } 
-"true"     { return T_true; } 
+"skip"     { return T_skip; }
+"true"     { return T_true; }
 "var"      { return T_var; }
 ":=" 	   { return T_asgn; }
 ">="       { return T_greq; }
 "<="       { return T_leq; }
 "<>"       { return T_neq; }
 
-[\(\)\[\]\,\+\-\*\/\%\!\&\|\=\<\>\:]                            { yylval.op = yytext[0]; return yytext[0]; }
-{L}({L}|{D}|_)*                                                 { yylval.var = yytext[0]; return T_id; }
-{D}+                                                            { yylval.num = atoi(yytext); return T_number; }
-\'([^\'\"\\]|\\[ntr0\\\'\"\\]|\\x[0-9a-fA-F]{2})\'              { return T_const; }
-\"([^\"\n]|\\.)*\"                                              { return T_string; }
+[\(\)\[\]\,\+\-\*\/\%\!\&\|\=\<\>\:]                            { return yytext[0]; }
+{I}                                                             { yylval.idstr = strdup(yytext); return T_id; }
+\"([^\n\"\'\\]|{E})*\"                                          { yylval.idstr = strdup(yytext); return T_string; }
+[0-9][0-9]*                                                     { yylval.constval = atoi(yytext); return T_num_const; }
+\'([^\"\'\\]|{E})\'                                             { yylval.constval = yytext[0]; return T_char_const; }
 
-[ \t]+ { ; } 												    /* Ignore spaces and tabs */
+[ \t]+ { ; }                                                    /* Ignore spaces and tabs */
 ^[ \t]*(#.*)?\n { ; }                                           /* Single-line comments, blank lines*/
 "(*" { BEGIN(COMMENT); comment_depth = 1; }                     /* Multi-line comment handling */
 <COMMENT>"(*" { comment_depth++; }                              /* Handle Nested Comments */
 <COMMENT>")*" { if (--comment_depth == 0) BEGIN(INITIAL);}      /* Exit comment state */
-<COMMENT>.    {}                                                /* Consume characters inside comment */ 
-<COMMENT>\n   {}                                                /* Keep track of new lines */ 
+<COMMENT>.    {}                                                /* Consume characters inside comment */
+<COMMENT>\n   {}                                                /* Keep track of new lines */
 <COMMENT><<EOF>> {                                              /* ERROR: Unclosed Comment */
     fprintf(stderr, RED "Lexer Error " RESET ": Unclosed comment (missing '*)') at line %d\n", yylineno);
     exit(1);

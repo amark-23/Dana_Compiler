@@ -3,6 +3,9 @@
 #include "lexer.hpp"
 #include <cstdio>
 #include <cstdlib>
+#include <vector>
+#include <string>
+#include <stack>
 
 // ANSI color codes
 #define RED "\033[1;31m"
@@ -16,16 +19,28 @@ extern size_t indent_stack_size;
 extern size_t level;
 extern void stackinit();
 
+stack<fdefNode*> fNames;
+vector<string> *ids;
+vector<exprNode*> *lastArg;
+
+fdefNode *startFunc;
+
 %}
 
 %union{
-  Stmt *stmt;
-  Expr *expr;
-  Block *blck;
-  Func *fnc;
-  char var;
-  int  num;
-  char op;
+  fdefNode *func;
+  exprNode *expr;
+  stmtNode *stmt;
+  paramNode *param;
+  headerNode *header;
+  lvalNode *lval;
+  fcallNode *funcCall;
+  ifNode *ifStmt;
+  typeNode *types;
+  vector<string> *idList;
+
+  int constval;
+  char *idstr;
 }
 
 %token T_and "and"
@@ -35,7 +50,7 @@ extern void stackinit();
 %token T_byte "byte"
 %token T_continue "continue"
 %token T_decl "decl"
-%token T_def 
+%token T_def "def"
 %token T_elif "elif"
 %token T_else "else"
 %token T_end "end"
@@ -52,178 +67,202 @@ extern void stackinit();
 %token T_skip "skip"
 %token T_true "true"
 %token T_var "var"
+%token T_void "void"
 %token T_asgn ":="
 %token T_greq ">=" 
 %token T_leq "<="
 %token T_neq "<>"
 
-%token<var> T_id  
-%token<num> T_number    
-%token T_const
-%token T_string
-%token auto_end
-
 %nonassoc "def" "if" "loop" "break" "continue" "return"
 %nonassoc "not" '!'
 %nonassoc '=' "<>" '<' '>' "<=" ">="
-%left<op> '*' '/' '%' '&'
-%left<op> '+' '-'
-%left<op> '|'
+%left '*' '/' '%' '&'
+%left '+' '-' '|'
 %left "and"
 %left "or"
 
+%type<func> program func_def func_decl
+%type<stmt> stmt stmt_list local_def local_def_list loop
+%type<expr> expr cond expr_list
+%type<funcCall> func_call proc_call
+%type<ifStmt> if_stmts opt_elif_else
+%type<header> header
+%type<param> opt_fpar
+%type<types> fpar_type ref_data_type array_type type data_type
+%type<idList> id_list
+%type<lval> l_value
 
-
-%type<stmt> stmt
-%type<expr> expr
-%type<blck> stmt_list
+%token<idstr> T_id T_string
+%token<constval> T_num_const T_char_const
+%token auto_end
 
 %expect 1
 
 %%
 
-program : func_def                                                                              {  }
-        ;
-
-func_def  : T_def header local_def_list auto_end                                                {  }
-          ;
-
-func_decl : T_decl header                                                                       {  }
-          ;
-
-header  : T_id "is" type ':' opt_fpar                                                           {  }
-        | T_id "is" type                                                                        {  }
-        | T_id ':' opt_fpar                                                                     {  }
-        | T_id                                                                                  {  }
-        ;
-
-opt_fpar  : id_list "as" ref_data_type                                                          {  }
-          | id_list "as" ref_data_type ',' opt_fpar                                             {  }
-          | id_list "as" fpar_type                                                              {  }
-          | id_list "as" fpar_type ',' opt_fpar                                                 {  }
-          ;
-
-fpar_type : "int"                                                                               {  }
-          | "byte"                                                                              {  }
-          | array_type                                                                          {  }
-          ;
-
-ref_data_type : "ref" "int"                                                                     {  }
-              | "ref" "byte"                                                                    {  }
-              ;
-
-array_type  : "int" '[' ']'                                                                     {  }
-            | "byte" '[' ']'                                                                    {  }
-            | "int" '[' T_number ']'                                                            {  }
-            | "byte" '[' T_number ']'                                                           {  }
-            | array_type '[' T_number ']'                                                       {  }
-            ;
-
-stmt_list : stmt                                                                                {  }
-          | stmt stmt_list                                                                      {  } 
-          ;
-
-data_type : "int"                                                                               {  }
-          | "byte"                                                                              {  }
-          ;
-
-type  : type '[' T_number ']'                                                                   {  }
-      | data_type                                                                               {  }
+program
+      : func_def                                                                                { std::cout << "AST:\n" << *($1) << std::endl; $$ = $1; startFunc = $1; }
       ;
 
-local_def_list  : "begin" stmt_list "end"                                                       {  }
-                | stmt_list                                                                     {  }
-                | local_def local_def_list                                                      {  }
-                ;
-
-local_def : func_def                                                                            {  }
-          | func_decl                                                                           {  }
-          | "var" id_list "is" type                                                             {  }
-          ;
-
-stmt  : "skip"                                                                                  {  }
-      | l_value ":=" expr                                                                       {  }
-      | func_call                                                                               {  }      
-      | proc_call                                                                               {  }
-      | "exit"                                                                                  {  }
-      | "return" ':' expr                                                                       {  }
-      | if_stmts                                                                                {  }
-      | loop                                                                                    {  }
-      | "break"                                                                                 {  }
-      | "break" ':' T_id                                                                        {  }
-      | "continue"                                                                              {  }
-      | "continue" ':' T_id                                                                     {  }
+func_def
+      : T_def header {fNames.push(new fdefNode($2, NULL)); } local_def_list auto_end            { $$ = new fdefNode($2, $4); fNames.pop(); }
       ;
 
-if_stmts  : "if" cond ':' stmt_list auto_end "else" ':' stmt_list auto_end                      {  }
-          | "if" cond ':' stmt_list auto_end "elif" cond ':' stmt_list auto_end opt_elif_else   {  }
-          | "if" cond ':' stmt_list auto_end                                                    {  }
-          ;
-
-loop  : "loop" T_id ':' stmt_list auto_end                                                      {  }
-      | "loop" ':' stmt_list auto_end                                                           {  }
+func_decl
+      : T_decl header                                                                           { $$ = new fdefNode($2, NULL); }
       ;
 
-opt_elif_else : /* empty */                                                                     {  }
-              | "elif" cond ':' stmt_list auto_end opt_elif_else                                {  }
-              | "else" ':' stmt_list auto_end                                                   {  }
-              ;
-
-proc_call : T_id                                                                                {  }
-          | T_id ':' expr_list                                                                  {  }
-          ;
-
-func_call : T_id '('')'                                                                         {  }
-          | T_id '(' expr_list ')'                                                              {  }
-          ;
-
-l_value : T_id                                                                                  {  }
-        | T_string                                                                              {  }
-        | l_value '[' expr ']'                                                                  {  }
-        ;
-
-expr  : T_number                                                                                {  }
-      | T_const                                                                                 {  }
-      | l_value                                                                                 {  }
-      | func_call                                                                               {  }
-      | '(' expr ')'                                                                            {  }
-      | '+' expr                                                                                {  }
-      | '-' expr                                                                                {  }
-      | '!' expr                                                                                {  }
-      | expr '+' expr                                                                           {  }
-      | expr '-' expr                                                                           {  }
-      | expr '*' expr                                                                           {  }
-      | expr '/' expr                                                                           {  }
-      | expr '%' expr                                                                           {  }
-      | expr '&' expr                                                                           {  }
-      | expr '|' expr                                                                           {  }
-      | "true"                                                                                  {  }
-      | "false"                                                                                 {  }
+header
+      : T_id "is" type ':' opt_fpar                                                             { $$ = new headerNode($3, $5, new Id($1)); }
+      | T_id "is" type                                                                          { $$ = new headerNode($3, NULL, new Id($1)); }
+      | T_id ':' opt_fpar                                                                       { $$ = new headerNode(NULL, $3, new Id($1)); }    // void func (not type)
+      | T_id                                                                                    { $$ = new headerNode(NULL, NULL, new Id($1)); }  // void func (not type)
       ;
 
-cond  : expr rel_op expr                                                                        {  }
-      | cond "and" cond                                                                         {  }
-      | cond "or" cond                                                                          {  }
-      | "not" cond                                                                              {  }
-      | '(' cond ')'                                                                            {  }
-      | expr                                                                                    {  }
+opt_fpar
+      : id_list "as" ref_data_type                                                              { $$ = new paramNode($1, $3, NULL); $$->ref = true; }
+      | id_list "as" fpar_type                                                                  { $$ = new paramNode($1, $3, NULL); $$->ref = false; }
+      | id_list "as" ref_data_type ',' opt_fpar                                                 { $$ = new paramNode($1, $3, $5); $$->ref = true; }
+      | id_list "as" fpar_type ',' opt_fpar                                                     { $$ = new paramNode($1, $3, $5); $$->ref = false; }
       ;
 
-rel_op  : '>'                                                                                   {  }
-        | '<'                                                                                   {  }
-        | ">="                                                                                  {  }
-        | "<="                                                                                  {  }
-        | '='                                                                                   {  }
-        | "<>"                                                                                  {  }
-        ;
+fpar_type
+      : "int"                                                                                   { $$ = new typeNode("int", NULL); }
+      | "byte"                                                                                  { $$ = new typeNode("byte", NULL); }
+      | array_type                                                                              { $$ = $1; }
+      ;
 
-id_list : T_id                                                                                  {  }
-        | id_list T_id                                                                          {  }
-        ;
+ref_data_type
+      : T_ref "int"                                                                             { $$ = new typeNode("int", NULL); }
+      | T_ref "byte"                                                                            { $$ = new typeNode("byte", NULL); }
+      ;
 
-expr_list : expr                                                                                {  }
-          | expr ',' expr_list                                                                  {  }
-          ;
+array_type
+      : "int" '[' ']'                                                                           { $$ = new typeNode("int", NULL, new Const(0)); }
+      | "byte" '[' ']'                                                                          { $$ = new typeNode("byte", NULL, new Const(0)); }
+      | "int" '[' T_num_const ']'                                                               { $$ = new typeNode("int", NULL, new Const($3)); }
+      | "byte" '[' T_num_const ']'                                                              { $$ = new typeNode("byte", NULL, new Const($3)); }
+      | array_type '[' T_num_const ']'                                                          { $$ = new typeNode("arr", $1, new Const($3)); }
+      ;
+
+stmt_list
+      : stmt                                                                                    { $$ = $1; }
+      | stmt stmt_list                                                                          { $1->tail = $2; $$ = $1; } 
+      ;
+
+type
+      : type '[' T_num_const ']'                                                                { $$ = new typeNode("arr", $1, new Const($3)); }
+      | data_type                                                                               { $$ = $1; }
+      ;
+
+data_type
+      : "int"                                                                                   { $$ = new typeNode("int", NULL); }
+      | "byte"                                                                                  { $$ = new typeNode("byte", NULL); }
+      ;
+
+local_def_list
+      : T_begin stmt_list T_end                                                                 { $$ = $2; }
+      | stmt_list                                                                               { $$ = $1; }
+      | local_def local_def_list                                                                { $$ = $1; $1->tail = $2; }
+      ;
+
+local_def
+      : func_def                                                                                { $$ = new stmtNode("def", NULL, NULL, NULL); $$->funcDef = $1; }
+      | func_decl                                                                               { $$ = new stmtNode("decl", NULL, NULL, NULL); $$->funcDef = $1; }
+      | "var" id_list "is" type                                                                 { $$ = new stmtNode("decl", NULL, NULL, NULL); $$->varNames = $2; $$->varType = $4; }
+      ;
+
+stmt
+      : "skip"                                                                                  { $$ = new stmtNode("skip", NULL, NULL, NULL); }
+      | l_value ":=" expr                                                                       { $$ = new stmtNode("asgn", NULL, NULL, NULL); $$->lval = $1; $$->exp = $3; }
+      | func_call                                                                               { $$ = new stmtNode("fc", NULL, NULL, NULL); $$->exp = new exprNode('f',NULL,0,NULL,NULL, 0); $$->exp->func = $1; }
+      | proc_call                                                                               { $$ = new stmtNode("pc", NULL, NULL, NULL); $$->exp = new exprNode('f',NULL,0,NULL,NULL, 0); $$->exp->func = $1; }
+      | "exit"                                                                                  { $$ = new stmtNode("exit", NULL, NULL, NULL); $$->funcDef = fNames.top(); }
+      | "return" ':' expr                                                                       { $$ = new stmtNode("return", NULL, NULL, NULL); $$->exp = $3; $$->funcDef = fNames.top(); }
+      | if_stmts                                                                                { $$ = new stmtNode("if", NULL, NULL, NULL); $$->ifnode = $1; }
+      | loop                                                                                    { $$ = $1; }
+      | "break"                                                                                 { $$ = new stmtNode("break", NULL, NULL, NULL); }
+      | "break" ':' T_id                                                                        { $$ = new stmtNode("break", NULL, NULL, new Id($3)); }
+      | "continue"                                                                              { $$ = new stmtNode("continue", NULL, NULL, NULL); }
+      | "continue" ':' T_id                                                                     { $$ = new stmtNode("continue", NULL, NULL, new Id($3)); }
+      ;
+
+if_stmts
+      : "if" cond ':' stmt_list auto_end "else" ':' stmt_list auto_end                          { $$ = new ifNode($2, $4); auto elseNode = new ifNode(NULL, $8); $$->tail = elseNode; elseNode->tail = NULL; }
+      | "if" cond ':' stmt_list auto_end "elif" cond ':' stmt_list auto_end opt_elif_else       { $$ = new ifNode($2, $4); auto elseNode = new ifNode($7, $9); $$->tail = elseNode; elseNode->tail = $11; }
+      | "if" cond ':' stmt_list auto_end                                                        { $$ = new ifNode($2, $4); }
+      ;
+
+opt_elif_else
+      : /* empty */                                                                             { $$ = NULL; }
+      | "elif" cond ':' stmt_list auto_end opt_elif_else                                        { $$ = new ifNode($2, $4); $$->tail = $6; }
+      | "else" ':' stmt_list auto_end                                                           { $$ = new ifNode(NULL, $3); }
+      ;
+
+loop
+      : "loop" T_id ':' stmt_list auto_end                                                      { $$ = new stmtNode("loop", $4, NULL, new Id($2)); }
+      | "loop" ':' stmt_list auto_end                                                           { $$ = new stmtNode("loop", $3, NULL, NULL); }
+      ;
+
+proc_call
+      : T_id                                                                                    { $$ = new fcallNode(new Id($1)); $$->args = NULL; }
+      | T_id ':' expr_list                                                                      { $$ = new fcallNode(new Id($1)); $$->args = lastArg; lastArg = new vector<exprNode*>(); }
+      ;
+
+func_call
+      : T_id '('')'                                                                             { $$ = new fcallNode(new Id($1)); $$->args = NULL; }
+      | T_id '(' expr_list ')'                                                                  { $$ = new fcallNode(new Id($1)); $$->args = lastArg; lastArg = new vector<exprNode*>(); }
+      ;
+
+l_value
+      : T_id                                                                                    { $$ = new lvalNode(false, new Id($1)); }
+      | T_string                                                                                { $$ = new lvalNode(true, new Id($1)); }
+      | l_value '[' expr ']'                                                                    { $1->ind->push_back($3); $$ = $1; }
+      ;
+
+expr
+      : T_num_const                                                                             { $$ = new exprNode('c', NULL, new Const($1), NULL, NULL, 0); }
+      | T_char_const                                                                            { $$ = new exprNode('x', NULL, new Const($1), NULL, NULL, 0); }
+      | l_value                                                                                 { $$ = new exprNode('i', $1, NULL, NULL, NULL, 0); }
+      | func_call                                                                               { $$ = new exprNode('f', NULL, NULL, NULL, NULL, 0); $$->func = $1; }
+      | '(' expr ')'                                                                            { $$ = $2; }
+      | '+' expr                                                                                { $$ = new exprNode('+', NULL, NULL, NULL, $2, 0); }
+      | '-' expr                                                                                { $$ = new exprNode('-', NULL, NULL, NULL, $2, 0); }
+      | '!' expr                                                                                { $$ = new exprNode('!', NULL, NULL, NULL, $2, 0); }
+      | expr '+' expr                                                                           { $$ = new exprNode('+', NULL, NULL, $1, $3, 0); }
+      | expr '-' expr                                                                           { $$ = new exprNode('-', NULL, NULL, $1, $3, 0); }
+      | expr '*' expr                                                                           { $$ = new exprNode('*', NULL, NULL, $1, $3, 0); }
+      | expr '/' expr                                                                           { $$ = new exprNode('/', NULL, NULL, $1, $3, 0); }
+      | expr '%' expr                                                                           { $$ = new exprNode('%', NULL, NULL, $1, $3, 0); }
+      | expr '&' expr                                                                           { $$ = new exprNode('&', NULL, NULL, $1, $3, 0); }
+      | expr '|' expr                                                                           { $$ = new exprNode('|', NULL, NULL, $1, $3, 0); }
+      | "true"                                                                                  { $$ = new exprNode('b', NULL, NULL, NULL, NULL, 1); }
+      | "false"                                                                                 { $$ = new exprNode('b', NULL, NULL, NULL, NULL, 0); }
+      ;
+
+cond
+      : expr '>' expr                                                                           { $$ = new exprNode('>', NULL, NULL, $1, $3, 0); }
+      | expr '<' expr                                                                           { $$ = new exprNode('<', NULL, NULL, $1, $3, 0); }
+      | expr T_greq expr                                                                        { $$ = new exprNode('g', NULL, NULL, $1, $3, 0); }
+      | expr T_leq expr                                                                         { $$ = new exprNode('l', NULL, NULL, $1, $3, 0); }
+      | expr '=' expr                                                                           { $$ = new exprNode('=', NULL, NULL, $1, $3, 0); }
+      | expr T_neq expr                                                                         { $$ = new exprNode('d', NULL, NULL, $1, $3, 0); }
+      | cond "and" cond                                                                         { $$ = new exprNode('a', NULL, NULL, $1, $3, 0); }
+      | cond "or" cond                                                                          { $$ = new exprNode('o', NULL, NULL, $1, $3, 0); }
+      | "not" cond                                                                              { $$ = new exprNode('n', NULL, NULL, NULL, $2, 0); }
+      | '(' cond ')'                                                                            { $$ = $2; }
+      | expr                                                                                    { $$ = $1; }
+      ;
+
+id_list
+      : T_id                                                                                    { ids = new vector<string>(); ids->push_back($1); $$ = ids; }
+      | id_list T_id                                                                            { ids->push_back($2); }
+      ;
+
+expr_list
+      : expr                                                                                    { lastArg->push_back($1); }
+      | expr ',' expr_list                                                                      { lastArg->push_back($1); }
+      ;
 
 %%
 
@@ -233,6 +272,9 @@ void yyerror(const char *msg) {
 
 int main() {
     stackinit(); 
+    startFunc = NULL;
+    fNames = stack<fdefNode*>();
+    lastArg = new vector<exprNode*>();
     int result = yyparse();
     // printf("\n");
     if (result == 0) printf("Parsing " GREEN "Successful.\n" RESET);

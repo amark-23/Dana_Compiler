@@ -1,137 +1,148 @@
+#ifndef AST_HPP
+#define AST_HPP
 #include <iostream>
 #include <vector>
+#include <string>
 
-class AST {
+using namespace std;
+
+class Id;
+class Const;
+class typeNode;
+class paramNode;
+class headerNode;
+class exprNode;
+class fcallNode;
+class lvalNode;
+class ifNode;
+class stmtNode;
+class fdefNode;
+
+class Node {
   public:
-    virtual void printAST(std::ostream &out) const = 0;
+    virtual void printNode(std::ostream &out) const = 0;
 };
 
-inline std::ostream &operator<<(std::ostream &out, const AST &ast) {
-  ast.printAST(out);
+inline std::ostream &operator<<(std::ostream &out, const Node &ast) {
+  ast.printNode(out);
   return out;
 }
 
-
-class Stmt : public AST {
+class Id : public Node {
   public:
-  private:
+    Id(string s);
+    string name;
+
+    void printNode(std::ostream &out) const override;
 };
 
-class Expr : public AST {
+class Const : public Node {
   public:
-  private:
+    Const(int v);
+    int value;
+
+    void printNode(std::ostream &out) const override;
 };
 
-class Func : public Stmt {
+class typeNode : public Node {
   public:
-  Func() : func_block() {}
-  void append(Stmt *s) { func_block.push_back(s); }
-  void printAST(std::ostream &out) const override {
-    out << "Block(";
-    bool first = true;
-    for (const auto &s : func_block) {  // XXX: Fixme
-      if (!first) out << ", ";
-      first = false;
-      out << *s;
-    }
-    out << ")";
-  }
-  private:
-    std::vector<Stmt *> func_block;
- };
+    typeNode(string typeName, typeNode* next, Const *c = nullptr);
+    Const *con;
+    string type;
+    typeNode* nextType;
 
-class Block : public Stmt {
- public:
-  Block() : stmt_list() {}
-  void append(Stmt *s) { stmt_list.push_back(s); }
-  void printAST(std::ostream &out) const override {
-    out << "Block(";
-    bool first = true;
-    for (const auto &s : stmt_list) {  // XXX: Fixme
-      if (!first) out << ", ";
-      first = false;
-      out << *s;
-    }
-    out << ")";
-  }
- private:
-  std::vector<Stmt *> stmt_list;
+    void printNode(std::ostream &out) const override;
 };
 
-class BinOp : public Expr {
- public:
-  BinOp(Expr *e1, char o, Expr *e2) : expr1(e1), op(o), expr2(e2) {}
-  void printAST(std::ostream &out) const override {
-    out << op << "(" << *expr1 << ", " << *expr2 << ")";
-  }
- private:
-  Expr *expr1;
-  char op;
-  Expr *expr2;
+class paramNode : public Node {
+  public:
+    paramNode(vector<string> *n, typeNode *type, paramNode *t);
+    bool ref;
+    vector<string> *names;
+    typeNode *types;
+    paramNode *tail;
+
+    void printNode(std::ostream &out) const override;
+}; 
+
+class headerNode : public Node {
+  public:
+    headerNode(typeNode *t, paramNode *p, Id *i);
+    typeNode *headType;
+    paramNode *params;
+    Id *iden;
+
+    void printNode(std::ostream &out) const override;
 };
 
-class Const : public Expr {
- public:
-  Const(int n) : num(n) {}
-  void printAST(std::ostream &out) const override {
-    out << "Const(" << num << ")";
-  }
- private:
-  int num;
+class exprNode : public Node {
+  public:
+    exprNode(char c, lvalNode *l, Const *con, exprNode *left, exprNode *right, bool tf);
+    fcallNode *func;
+    char op;
+    lvalNode *lval;
+    Const *constant;
+    exprNode *leftExpr;
+    exprNode *rightExpr;
+    bool tfFlag;
+
+    void printNode(std::ostream &out) const override;
 };
 
-class Id : public Expr {
- public:
-  Id(char x) : var(x) {}
-  void printAST(std::ostream &out) const override {
-    out << "Id(" << var << ")";
-  }
- private:
-  char var;
+class fcallNode : public Node {
+  public:
+    fcallNode(Id *i);
+    vector<exprNode*> *args;
+    Id* iden;
+
+    void printNode(std::ostream &out) const override;
 };
 
-class Let : public Stmt {
- public:
-  Let(Id *lhs, Expr *rhs) : var(lhs), expr(rhs) {}
-  void printAST(std::ostream &out) const override {
-    out << "Let(" << *var << ", " << *expr << ")";
-  }
- private:
-  Id   *var;
-  Expr *expr;
+class lvalNode : public Node {
+  public:
+    lvalNode(bool str, Id *i);
+    vector<exprNode*> *ind;
+    bool isString;
+    Id *ident;
+
+    void printNode(std::ostream &out) const override;
 };
 
-class For : public Stmt {
- public:
-  For(Expr *e, Stmt *s) : expr(e), stmt(s) {}
-  void printAST(std::ostream &out) const override {
-    out << "For(" << *expr << ", " << *stmt << ")";
-  }
- private:
-  Expr *expr;
-  Stmt *stmt;
+class ifNode : public Node {
+  public:
+    ifNode(exprNode *e, stmtNode *s);
+    ifNode *tail;
+    exprNode *cond;
+    stmtNode *stmt;
+
+    void printNode(std::ostream &out) const override;
 };
 
-class If : public Stmt {
- public:
-  If(Expr *c, Stmt *s1, Stmt *s2 = nullptr) : cond(c), stmt1(s1), stmt2(s2) {}
-  void printAST(std::ostream &out) const override {
-    out << "If(" << *cond << ", " << *stmt1;
-    if (stmt2 != nullptr) out << ", " << *stmt2;
-    out << ")";
-  }
- private:
-  Expr *cond;
-  Stmt *stmt1;
-  Stmt *stmt2;
+class stmtNode : public Node {
+  public:
+    stmtNode(string type, stmtNode *body, stmtNode *tail, Id *i);
+    stmtNode *tail;
+    fdefNode *funcDef;
+    typeNode *varType;
+    vector<string> *varNames;
+    ifNode *ifnode;
+    lvalNode *lval;
+    exprNode *exp;
+    string stmtType;
+    stmtNode *stmtBody;
+    stmtNode *stmtTail;
+    Id *tag;
+
+    void printNode(std::ostream &out) const override;
 };
 
-class Print : public Stmt {
- public:
-  Print(Expr *e) : expr(e) {}
-  void printAST(std::ostream &out) const override {
-    out << "Print(" << *expr << ")";
-  }
- private:
-  Expr *expr;
+class fdefNode : public Node {
+  public:
+    fdefNode(headerNode *h, stmtNode *b);
+    headerNode *head;
+    stmtNode *body;
+
+    void printNode(std::ostream &out) const override;
 };
+
+#endif
