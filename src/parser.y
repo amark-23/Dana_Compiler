@@ -67,7 +67,6 @@ fdefNode *startFunc;
 %token T_skip "skip"
 %token T_true "true"
 %token T_var "var"
-%token T_void "void"
 %token T_asgn ":="
 %token T_greq ">=" 
 %token T_leq "<="
@@ -175,7 +174,6 @@ local_def
 stmt
       : "skip"                                                                                  { $$ = new stmtNode("skip", NULL, NULL, NULL); }
       | l_value ":=" expr                                                                       { $$ = new stmtNode("asgn", NULL, NULL, NULL); $$->lval = $1; $$->exp = $3; }
-      | func_call                                                                               { $$ = new stmtNode("fc", NULL, NULL, NULL); $$->exp = new exprNode('f',NULL,0,NULL,NULL, 0); $$->exp->func = $1; }
       | proc_call                                                                               { $$ = new stmtNode("pc", NULL, NULL, NULL); $$->exp = new exprNode('f',NULL,0,NULL,NULL, 0); $$->exp->func = $1; }
       | "exit"                                                                                  { $$ = new stmtNode("exit", NULL, NULL, NULL); $$->funcDef = fNames.top(); }
       | "return" ':' expr                                                                       { $$ = new stmtNode("return", NULL, NULL, NULL); $$->exp = $3; $$->funcDef = fNames.top(); }

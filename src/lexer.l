@@ -45,6 +45,49 @@ int process_indent(char* line) {
     }
     return dedents;
 }
+
+char charValidation(string s) {
+    char c = 0;
+    /* yytext layout examples:
+       'a'    -> yytext[0]='\'', yytext[1]='a', yytext[2]='\''
+       '\n'   -> yytext[0]='\'', yytext[1]='\\', yytext[2]='n', yytext[3]='\''
+       '\x41' -> yytext[0]='\'', yytext[1]='\\', yytext[2]='x', yytext[3]='4', yytext[4]='1', yytext[5]='\''
+    */
+    if (yytext[1] == '\\') {
+        char esc = yytext[2];
+        switch (esc) {
+            case 'n': c = '\n'; break;
+            case 't': c = '\t'; break;
+            case 'r': c = '\r'; break;
+            case '0': c = '\0'; break;
+            case '\\': c = '\\'; break;
+            case '\'': c = '\''; break;
+            case '\"': c = '\"'; break;
+            case 'x': {
+                /* parse two hex digits: yytext[3], yytext[4] */
+                int hi = 0, lo = 0;
+                if (isxdigit((unsigned char)yytext[3]) && isxdigit((unsigned char)yytext[4])) {
+                    auto hexval = [](char h) -> int {
+                        if (h >= '0' && h <= '9') return h - '0';
+                        return (char) (tolower((unsigned char)h) - 'a' + 10);
+                    };
+                    hi = hexval(yytext[3]);
+                    lo = hexval(yytext[4]);
+                    c = (char)((hi << 4) | lo);
+                } else {
+                    c = 0;
+                }
+                break;
+            }
+            default:
+                c = esc; /* unknown escape -> take the char literally */
+                break;
+        }
+    } else c = yytext[1];
+
+    return (int)(unsigned char)c;
+}
+
 %}
 
 I    [a-zA-Z_][a-zA-Z0-9_]*
@@ -90,7 +133,7 @@ E    \\(n|t|r|0|\\|\'|\"|x{H}{H})
 {I}                                                             { yylval.idstr = strdup(yytext); return T_id; }
 \"([^\n\"\'\\]|{E})*\"                                          { yylval.idstr = strdup(yytext); return T_string; }
 [0-9][0-9]*                                                     { yylval.constval = atoi(yytext); return T_num_const; }
-\'([^\"\'\\]|{E})\'                                             { yylval.constval = yytext[0]; return T_char_const; }
+\'([^\"\'\\]|{E})\'                                             { yylval.constval = charValidation(yytext); return T_char_const; }
 
 [ \t]+ { ; }                                                    /* Ignore spaces and tabs */
 ^[ \t]*(#.*)?\n { ; }                                           /* Single-line comments, blank lines*/

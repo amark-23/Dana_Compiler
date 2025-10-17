@@ -193,8 +193,6 @@ void stmtNode::printNode(std::ostream &out) const {
         current = current->tail;
     }
     out << "endloop )";
-    } else if (stmtType == "fc") {
-    out << "FuncCall( " << *exp;
     } else if (stmtType == "pc") {
     out << "ProcCall: " << *exp;
     } else if (stmtType == "def") {
