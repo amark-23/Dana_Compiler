@@ -7,7 +7,6 @@
 #include <string>
 #include <stack>
 
-// ANSI color codes
 #define RED "\033[1;31m"
 #define GREEN "\033[1;32m"
 #define RESET "\033[0m"
@@ -28,19 +27,19 @@ fdefNode *startFunc;
 %}
 
 %union{
-  fdefNode *func;
-  exprNode *expr;
-  stmtNode *stmt;
-  paramNode *param;
-  headerNode *header;
-  lvalNode *lval;
-  fcallNode *funcCall;
-  ifNode *ifStmt;
-  typeNode *types;
-  vector<string> *idList;
+      fdefNode *func;
+      exprNode *expr;
+      stmtNode *stmt;
+      paramNode *param;
+      headerNode *header;
+      lvalNode *lval;
+      fcallNode *funcCall;
+      ifNode *ifStmt;
+      typeNode *types;
+      vector<string> *idList;
 
-  int constval;
-  char *idstr;
+      int constval;
+      char *idstr;
 }
 
 %token T_and "and"
@@ -114,8 +113,8 @@ func_decl
 header
       : T_id "is" type ':' opt_fpar                                                             { $$ = new headerNode($3, $5, new Id($1)); }
       | T_id "is" type                                                                          { $$ = new headerNode($3, NULL, new Id($1)); }
-      | T_id ':' opt_fpar                                                                       { $$ = new headerNode(NULL, $3, new Id($1)); }    // void func (not type)
-      | T_id                                                                                    { $$ = new headerNode(NULL, NULL, new Id($1)); }  // void func (not type)
+      | T_id ':' opt_fpar                                                                       { $$ = new headerNode(NULL, $3, new Id($1)); }
+      | T_id                                                                                    { $$ = new headerNode(NULL, NULL, new Id($1)); }
       ;
 
 opt_fpar
@@ -126,22 +125,22 @@ opt_fpar
       ;
 
 fpar_type
-      : "int"                                                                                   { $$ = new typeNode("int", NULL); }
-      | "byte"                                                                                  { $$ = new typeNode("byte", NULL); }
+      : "int"                                                                                   { $$ = new typeNode("int", 0, NULL); }
+      | "byte"                                                                                  { $$ = new typeNode("byte", 0, NULL); }
       | array_type                                                                              { $$ = $1; }
       ;
 
 ref_data_type
-      : T_ref "int"                                                                             { $$ = new typeNode("int", NULL); }
-      | T_ref "byte"                                                                            { $$ = new typeNode("byte", NULL); }
+      : T_ref "int"                                                                             { $$ = new typeNode("int", 0, NULL); }
+      | T_ref "byte"                                                                            { $$ = new typeNode("byte", 0, NULL); }
       ;
 
 array_type
-      : "int" '[' ']'                                                                           { $$ = new typeNode("int", NULL, new Const(0)); }
-      | "byte" '[' ']'                                                                          { $$ = new typeNode("byte", NULL, new Const(0)); }
-      | "int" '[' T_num_const ']'                                                               { $$ = new typeNode("int", NULL, new Const($3)); }
-      | "byte" '[' T_num_const ']'                                                              { $$ = new typeNode("byte", NULL, new Const($3)); }
-      | array_type '[' T_num_const ']'                                                          { $$ = new typeNode("arr", $1, new Const($3)); }
+      : "int" '[' ']'                                                                           { $$ = new typeNode("int", 1, NULL, new Const(0)); }
+      | "byte" '[' ']'                                                                          { $$ = new typeNode("byte", 1, NULL, new Const(0)); }
+      | "int" '[' T_num_const ']'                                                               { $$ = new typeNode("int", 1, NULL, new Const($3)); }
+      | "byte" '[' T_num_const ']'                                                              { $$ = new typeNode("byte", 1, NULL, new Const($3)); }
+      | array_type '[' T_num_const ']'                                                          { $$ = new typeNode("", 1, $1, new Const($3)); }
       ;
 
 stmt_list
@@ -150,13 +149,13 @@ stmt_list
       ;
 
 type
-      : type '[' T_num_const ']'                                                                { $$ = new typeNode("arr", $1, new Const($3)); }
+      : type '[' T_num_const ']'                                                                { $$ = new typeNode("", 1, $1, new Const($3)); }
       | data_type                                                                               { $$ = $1; }
       ;
 
 data_type
-      : "int"                                                                                   { $$ = new typeNode("int", NULL); }
-      | "byte"                                                                                  { $$ = new typeNode("byte", NULL); }
+      : "int"                                                                                   { $$ = new typeNode("int", 0, NULL); }
+      | "byte"                                                                                  { $$ = new typeNode("byte", 0, NULL); }
       ;
 
 local_def_list
@@ -273,8 +272,9 @@ int main() {
     startFunc = NULL;
     fNames = stack<fdefNode*>();
     lastArg = new vector<exprNode*>();
+    
     int result = yyparse();
-    // printf("\n");
+
     if (result == 0) printf("Parsing " GREEN "Successful.\n" RESET);
     else printf("Parsing " RED "failed.\n\n" RESET);
 

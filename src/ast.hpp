@@ -46,8 +46,9 @@ class Const : public Node {
 
 class typeNode : public Node {
   public:
-    typeNode(string typeName, typeNode* next, Const *c = nullptr);
-    Const *con;
+    typeNode(string typeName, bool ar, typeNode* n, Const *s = nullptr);
+    Const *arrSize;
+    bool arr;
     string type;
     typeNode* nextType;
 
