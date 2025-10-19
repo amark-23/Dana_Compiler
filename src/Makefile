@@ -1,24 +1,23 @@
 .PHONY: clean distclean default test
 
-CC=g++
-CFLAGS=-Wall
+CXX=g++
+CXXFLAGS= -Wall
 
 default: dana
 
-lexer.cpp: lexer.l
+dana: lexer.o parser.o ast.o symbol.o
+	$(CXX) $(CXXFLAGS) -o dana $^ -lfl
+
+lexer.o: lexer.cpp parser.hpp
+parser.o: parser.cpp parser.hpp
+ast.o: ast.cpp ast.hpp
+symbol.o: symbol.cpp symbol.hpp
+
+lexer.cpp: lexer.l ast.hpp ast.cpp
 	flex -s -o lexer.cpp lexer.l
 
-lexer.o: lexer.cpp parser.hpp ast.hpp
-
-parser.hpp parser.cpp: parser.y
+parser.hpp parser.cpp: parser.y ast.hpp ast.cpp
 	bison -dv -o parser.cpp parser.y
-
-parser.o: parser.cpp ast.hpp
-
-ast.o: ast.cpp ast.hpp
-
-dana: lexer.o parser.o ast.o
-	$(CC) $(CFLAGS) -o dana $^ -lfl
 
 test:
 	@echo "Running tests on all .dana files in ../Dana/ directory..."

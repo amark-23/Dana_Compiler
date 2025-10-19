@@ -17,15 +17,7 @@ void Const::printNode(std::ostream &out) const {
 }
 
 
-typeNode::typeNode(string typeName, bool ar, typeNode* n, Const *s) : type(typeName), arr(ar), nextType(n), arrSize(s) {}
-void typeNode::printNode(std::ostream &out) const {
-    type == "" ? out << "" : out << type;
-    if (nextType) out << *nextType;
-    if (arrSize) arrSize->value == 0 ? out << "[]" : out << "[" << *(arrSize) << "]";
-}
-
-
-paramNode::paramNode(vector<string> *n, typeNode *type, paramNode *t) : names(n), types(type), tail(t) {}
+paramNode::paramNode(vector<string> *n, typeClass *type, paramNode *t) : names(n), types(type), tail(t) {}
 void paramNode::printNode(std::ostream &out) const {
     for (const auto &name : *(names)) {
         if (ref) out << "ref ";
@@ -35,10 +27,9 @@ void paramNode::printNode(std::ostream &out) const {
 }
 
 
-headerNode::headerNode(typeNode *t, paramNode *p, Id *i) : headType(t), params(p), iden(i) {}
+headerNode::headerNode(typeClass *t, paramNode *p, Id *i) : headType(t), params(p), iden(i) {}
 void headerNode::printNode(std::ostream &out) const {
-    out << "Header( " << *iden << ", ";
-    headType == NULL ? out << "void" : out << *headType;
+    out << "Header( " << *iden << ", " << *headType;
 
     paramNode *current = params;
     if (current != NULL) {
@@ -131,6 +122,15 @@ void ifNode::printNode(std::ostream &out) const {
             statement = statement->tail;
         }
     }
+    else if (cond) {
+        out << " else if " << *cond << " {";
+        while(statement) {
+            out << *statement;
+            if (statement->tail) out << ", ";
+            statement = statement->tail;
+        }
+    }
+    else out << "unknown";
     out << "}";
 }
 

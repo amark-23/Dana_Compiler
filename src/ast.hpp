@@ -3,6 +3,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include "symbol.hpp"
 
 using namespace std;
 
@@ -17,6 +18,7 @@ class lvalNode;
 class ifNode;
 class stmtNode;
 class fdefNode;
+class typeClass;
 
 class Node {
   public:
@@ -44,23 +46,12 @@ class Const : public Node {
     void printNode(std::ostream &out) const override;
 };
 
-class typeNode : public Node {
-  public:
-    typeNode(string typeName, bool ar, typeNode* n, Const *s = nullptr);
-    Const *arrSize;
-    bool arr;
-    string type;
-    typeNode* nextType;
-
-    void printNode(std::ostream &out) const override;
-};
-
 class paramNode : public Node {
   public:
-    paramNode(vector<string> *n, typeNode *type, paramNode *t);
+    paramNode(vector<string> *n, typeClass *type, paramNode *t);
     bool ref;
     vector<string> *names;
-    typeNode *types;
+    typeClass *types;
     paramNode *tail;
 
     void printNode(std::ostream &out) const override;
@@ -68,8 +59,8 @@ class paramNode : public Node {
 
 class headerNode : public Node {
   public:
-    headerNode(typeNode *t, paramNode *p, Id *i);
-    typeNode *headType;
+    headerNode(typeClass *t, paramNode *p, Id *i);
+    typeClass *headType;
     paramNode *params;
     Id *iden;
 
@@ -124,7 +115,7 @@ class stmtNode : public Node {
     stmtNode(string type, stmtNode *body, stmtNode *tail, Id *i);
     stmtNode *tail;
     fdefNode *funcDef;
-    typeNode *varType;
+    typeClass *varType;
     vector<string> *varNames;
     ifNode *ifnode;
     lvalNode *lval;
