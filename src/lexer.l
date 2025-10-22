@@ -139,7 +139,7 @@ E    \\(n|t|r|0|\\|\'|\"|x{H}{H})
 ^[ \t]*(#.*)?\n { ; }                                           /* Single-line comments, blank lines*/
 "(*" { BEGIN(COMMENT); comment_depth = 1; }                     /* Multi-line comment handling */
 <COMMENT>"(*" { comment_depth++; }                              /* Handle Nested Comments */
-<COMMENT>")*" { if (--comment_depth == 0) BEGIN(INITIAL);}      /* Exit comment state */
+<COMMENT>"*)" { if (--comment_depth == 0) BEGIN(INITIAL);}      /* Exit comment state */
 <COMMENT>.    {}                                                /* Consume characters inside comment */
 <COMMENT>\n   {}                                                /* Keep track of new lines */
 <COMMENT><<EOF>> {                                              /* ERROR: Unclosed Comment */

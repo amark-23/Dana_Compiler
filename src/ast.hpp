@@ -21,118 +21,118 @@ class fdefNode;
 class typeClass;
 
 class Node {
-  public:
-    virtual void printNode(std::ostream &out) const = 0;
+    public:
+        virtual void printNode(std::ostream &out) const = 0;
 };
 
 inline std::ostream &operator<<(std::ostream &out, const Node &ast) {
-  ast.printNode(out);
-  return out;
+    ast.printNode(out);
+        return out;
 }
 
 class Id : public Node {
-  public:
-    Id(string s);
-    string name;
+    public:
+        Id(string s);
+        string name;
 
     void printNode(std::ostream &out) const override;
 };
 
 class Const : public Node {
-  public:
-    Const(int v);
-    int value;
+    public:
+        Const(int v);
+        int value;
 
     void printNode(std::ostream &out) const override;
 };
 
 class paramNode : public Node {
-  public:
-    paramNode(vector<string> *n, typeClass *type, paramNode *t);
-    bool ref;
-    vector<string> *names;
-    typeClass *types;
-    paramNode *tail;
+    public:
+        paramNode(vector<string> *n, typeClass *type, paramNode *t);
+        bool ref;
+        vector<string> *names;
+        typeClass *types;
+        paramNode *tail;
 
     void printNode(std::ostream &out) const override;
 }; 
 
 class headerNode : public Node {
-  public:
-    headerNode(typeClass *t, paramNode *p, Id *i);
-    typeClass *headType;
-    paramNode *params;
-    Id *iden;
+    public:
+        headerNode(typeClass *t, paramNode *p, Id *i);
+        typeClass *headType;
+        paramNode *params;
+        Id *iden;
 
     void printNode(std::ostream &out) const override;
 };
 
 class exprNode : public Node {
-  public:
-    exprNode(char c, lvalNode *l, Const *con, exprNode *left, exprNode *right, bool tf);
-    fcallNode *func;
-    char op;
-    lvalNode *lval;
-    Const *constant;
-    exprNode *leftExpr;
-    exprNode *rightExpr;
-    bool tfFlag;
+    public:
+        exprNode(char c, lvalNode *l, Const *con, exprNode *left, exprNode *right, bool tf);
+        fcallNode *func;
+        char op;
+        lvalNode *lval;
+        Const *constant;
+        exprNode *leftExpr;
+        exprNode *rightExpr;
+        bool tfFlag;
 
     void printNode(std::ostream &out) const override;
 };
 
 class fcallNode : public Node {
-  public:
-    fcallNode(Id *i);
-    vector<exprNode*> *args;
-    Id* iden;
+    public:
+        fcallNode(Id *i);
+        vector<exprNode*> *args;
+        Id* iden;
 
     void printNode(std::ostream &out) const override;
 };
 
 class lvalNode : public Node {
-  public:
-    lvalNode(bool str, Id *i);
-    vector<exprNode*> *ind;
-    bool isString;
-    Id *ident;
+    public:
+        lvalNode(bool str, Id *i);
+        vector<exprNode*> *ind;
+        bool isString;
+        Id *ident;
 
     void printNode(std::ostream &out) const override;
 };
 
 class ifNode : public Node {
-  public:
-    ifNode(exprNode *e, stmtNode *s);
-    ifNode *tail;
-    exprNode *cond;
-    stmtNode *stmt;
+    public:
+        ifNode(exprNode *e, stmtNode *s);
+        ifNode *tail;
+        exprNode *cond;
+        stmtNode *stmt;
 
     void printNode(std::ostream &out) const override;
 };
 
 class stmtNode : public Node {
-  public:
-    stmtNode(string type, stmtNode *body, stmtNode *tail, Id *i);
-    stmtNode *tail;
-    fdefNode *funcDef;
-    typeClass *varType;
-    vector<string> *varNames;
-    ifNode *ifnode;
-    lvalNode *lval;
-    exprNode *exp;
-    string stmtType;
-    stmtNode *stmtBody;
-    stmtNode *stmtTail;
-    Id *tag;
+    public:
+        stmtNode(string type, stmtNode *body, stmtNode *tail, Id *i);
+        stmtNode *tail;
+        fdefNode *funcDef;
+        typeClass *varType;
+        vector<string> *varNames;
+        ifNode *ifnode;
+        lvalNode *lval;
+        exprNode *exp;
+        string stmtType;
+        stmtNode *stmtBody;
+        stmtNode *stmtTail;
+        Id *tag;
 
     void printNode(std::ostream &out) const override;
 };
 
 class fdefNode : public Node {
-  public:
-    fdefNode(headerNode *h, stmtNode *b);
-    headerNode *head;
-    stmtNode *body;
+    public:
+        fdefNode(headerNode *h, stmtNode *b);
+        headerNode *head;
+        stmtNode *body;
 
     void printNode(std::ostream &out) const override;
 };
