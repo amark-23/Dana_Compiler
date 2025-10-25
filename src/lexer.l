@@ -46,7 +46,7 @@ int process_indent(char* line) {
     return dedents;
 }
 
-char charValidation(string s) {
+char charValidation(std::string s) {
     char c = 0;
     /* yytext layout examples:
        'a'    -> yytext[0]='\'', yytext[1]='a', yytext[2]='\''
@@ -184,7 +184,7 @@ E    \\(n|t|r|0|\\|\'|\"|x{H}{H})
     return 0; 
 }
 
-. { printf( RED "lexer error: " RESET "Unrecognized character: " RED "%s " RESET  "at line" RED "%d\n" RESET, yytext, yylineno); }
+. { printf( RED "Lexer error: " RESET "Unrecognized character: " RED "%s " RESET  "at line" RED "%d\n" RESET, yytext, yylineno); }
 
 %%
 

@@ -18,9 +18,8 @@ extern size_t indent_stack_size;
 extern size_t level;
 extern void stackinit();
 
-stack<fdefNode*> fNames;
-vector<string> *ids;
-vector<exprNode*> *lastArg;
+std::stack<fdefNode*> fNames;
+std::vector<exprNode*> *lastArg;
 
 fdefNode *startFunc;
 
@@ -36,7 +35,7 @@ fdefNode *startFunc;
       fcallNode *funcCall;
       ifNode *ifStmt;
       typeClass *types;
-      vector<string> *idList;
+      std::vector<std::string> *idList;
 
       int constval;
       char *idstr;
@@ -167,7 +166,7 @@ local_def_list
 local_def
       : func_def                                                                                { $$ = new stmtNode("def", NULL, NULL, NULL); $$->funcDef = $1; }
       | func_decl                                                                               { $$ = new stmtNode("decl", NULL, NULL, NULL); $$->funcDef = $1; }
-      | "var" id_list "is" type                                                                 { $$ = new stmtNode("decl", NULL, NULL, NULL); $$->varNames = $2; $$->varType = $4; }
+      | "var" id_list "is" type                                                                 { $$ = new stmtNode("vardecl", NULL, NULL, NULL); $$->varNames = $2; $$->varType = $4; }
       ;
 
 stmt
@@ -203,12 +202,12 @@ loop
 
 proc_call
       : T_id                                                                                    { $$ = new fcallNode(new Id($1)); $$->args = NULL; }
-      | T_id ':' expr_list                                                                      { $$ = new fcallNode(new Id($1)); $$->args = lastArg; lastArg = new vector<exprNode*>(); }
+      | T_id ':' expr_list                                                                      { $$ = new fcallNode(new Id($1)); $$->args = lastArg; lastArg = new std::vector<exprNode*>(); }
       ;
 
 func_call
       : T_id '('')'                                                                             { $$ = new fcallNode(new Id($1)); $$->args = NULL; }
-      | T_id '(' expr_list ')'                                                                  { $$ = new fcallNode(new Id($1)); $$->args = lastArg; lastArg = new vector<exprNode*>(); }
+      | T_id '(' expr_list ')'                                                                  { $$ = new fcallNode(new Id($1)); $$->args = lastArg; lastArg = new std::vector<exprNode*>(); }
       ;
 
 l_value
@@ -252,8 +251,8 @@ cond
       ;
 
 id_list
-      : T_id                                                                                    { ids = new vector<string>(); ids->push_back($1); $$ = ids; }
-      | id_list T_id                                                                            { ids->push_back($2); }
+      : T_id                                                                                    { $$ = new std::vector<std::string>(); $$->push_back($1); }
+      | id_list T_id                                                                            { $1->push_back($2); $$ = $1; }
       ;
 
 expr_list
@@ -264,20 +263,28 @@ expr_list
 %%
 
 void yyerror(const char *msg) {
-    fprintf(stderr, RED "%s" RESET " at line " RED "%d" RESET " : " RED "%s\n" RESET, msg, yylineno, yytext);
+      fprintf(stderr, RED "%s" RESET " at line " RED "%d" RESET " : " RED "%s\n" RESET, msg, yylineno, yytext);
 }
 
 int main() {
-    stackinit(); 
-    startFunc = NULL;
-    fNames = stack<fdefNode*>();
-    lastArg = new vector<exprNode*>();
-    
-    int result = yyparse();
+      stackinit(); 
+      SymbolTable st;
+      startFunc = NULL;
+      fNames = std::stack<fdefNode*>();
+      lastArg = new std::vector<exprNode*>();
 
-    if (result == 0) printf("Parsing " GREEN "Successful.\n" RESET);
-    else printf("Parsing " RED "failed.\n\n" RESET);
+      submitBuiltInFunctions(st);
+      int result = yyparse();
 
-    free(indent_stack);
-    return result;
+      try {
+            if (result == 0 && startFunc != NULL) {
+                  startFunc->semanticCheck(st);
+                  std::cout << GREEN "No semantic errors found." RESET "\n";
+            }
+      } catch (const SemanticError &e) {
+            fprintf(stderr, RED "Error at line %d:" RESET " %s\n" RESET, e.line, e.what());
+            result = 1;
+      }
+      free(indent_stack);
+      return result;
 }

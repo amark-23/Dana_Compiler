@@ -5,13 +5,14 @@ CXXFLAGS= -Wall
 
 default: dana
 
-dana: lexer.o parser.o ast.o symbol.o
+dana: lexer.o parser.o ast.o symbol.o semantic.o
 	$(CXX) $(CXXFLAGS) -o dana $^ -lfl
 
 lexer.o: lexer.cpp parser.hpp
 parser.o: parser.cpp parser.hpp
 ast.o: ast.cpp ast.hpp
 symbol.o: symbol.cpp symbol.hpp
+semantic.o: semantic.cpp
 
 lexer.cpp: lexer.l ast.hpp ast.cpp
 	flex -s -o lexer.cpp lexer.l

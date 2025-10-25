@@ -5,7 +5,7 @@
 #include <string>
 #include "symbol.hpp"
 
-using namespace std;
+extern int yylineno;
 
 class Id;
 class Const;
@@ -20,8 +20,13 @@ class stmtNode;
 class fdefNode;
 class typeClass;
 
+class SymbolTable;
+
 class Node {
     public:
+        int lineno;
+        Node() : lineno(yylineno) {}
+        Node(int ln) : lineno(ln) {}
         virtual void printNode(std::ostream &out) const = 0;
 };
 
@@ -32,8 +37,8 @@ inline std::ostream &operator<<(std::ostream &out, const Node &ast) {
 
 class Id : public Node {
     public:
-        Id(string s);
-        string name;
+        Id(std::string s);
+        std::string name;
 
     void printNode(std::ostream &out) const override;
 };
@@ -48,9 +53,9 @@ class Const : public Node {
 
 class paramNode : public Node {
     public:
-        paramNode(vector<string> *n, typeClass *type, paramNode *t);
+        paramNode(std::vector<std::string> *n, typeClass *type, paramNode *t);
         bool ref;
-        vector<string> *names;
+        std::vector<std::string> *names;
         typeClass *types;
         paramNode *tail;
 
@@ -79,12 +84,13 @@ class exprNode : public Node {
         bool tfFlag;
 
     void printNode(std::ostream &out) const override;
+    typeClass *semanticCheck(SymbolTable &sym);
 };
 
 class fcallNode : public Node {
     public:
         fcallNode(Id *i);
-        vector<exprNode*> *args;
+        std::vector<exprNode*> *args;
         Id* iden;
 
     void printNode(std::ostream &out) const override;
@@ -93,11 +99,12 @@ class fcallNode : public Node {
 class lvalNode : public Node {
     public:
         lvalNode(bool str, Id *i);
-        vector<exprNode*> *ind;
+        std::vector<exprNode*> *ind;
         bool isString;
         Id *ident;
 
     void printNode(std::ostream &out) const override;
+    typeClass *semanticCheck(SymbolTable &sym);
 };
 
 class ifNode : public Node {
@@ -112,20 +119,21 @@ class ifNode : public Node {
 
 class stmtNode : public Node {
     public:
-        stmtNode(string type, stmtNode *body, stmtNode *tail, Id *i);
+        stmtNode(std::string type, stmtNode *body, stmtNode *tail, Id *i);
         stmtNode *tail;
         fdefNode *funcDef;
         typeClass *varType;
-        vector<string> *varNames;
+        std::vector<std::string> *varNames;
         ifNode *ifnode;
         lvalNode *lval;
         exprNode *exp;
-        string stmtType;
+        std::string stmtType;
         stmtNode *stmtBody;
         stmtNode *stmtTail;
         Id *tag;
 
     void printNode(std::ostream &out) const override;
+    void semanticCheck(SymbolTable &sym);
 };
 
 class fdefNode : public Node {
@@ -135,6 +143,7 @@ class fdefNode : public Node {
         stmtNode *body;
 
     void printNode(std::ostream &out) const override;
+    void semanticCheck(SymbolTable &sym);
 };
 
 #endif

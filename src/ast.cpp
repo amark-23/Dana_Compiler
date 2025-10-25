@@ -3,21 +3,19 @@
 #include <vector>
 #include <string>
 
-using namespace std;
-
-Id::Id(string s) : name(s) {}
+Id::Id(std::string s) : Node(), name(s) {}
 void Id::printNode(std::ostream &out) const {
     out << name;
 }
 
 
-Const::Const(int v) : value(v) {}
+Const::Const(int v) : Node(), value(v) {}
 void Const::printNode(std::ostream &out) const {
     out << value;
 }
 
 
-paramNode::paramNode(vector<string> *n, typeClass *type, paramNode *t) : names(n), types(type), tail(t) {}
+paramNode::paramNode(std::vector<std::string> *n, typeClass *type, paramNode *t) : Node(), names(n), types(type), tail(t) {}
 void paramNode::printNode(std::ostream &out) const {
     for (const auto &name : *(names)) {
         if (ref) out << "ref ";
@@ -27,7 +25,7 @@ void paramNode::printNode(std::ostream &out) const {
 }
 
 
-headerNode::headerNode(typeClass *t, paramNode *p, Id *i) : headType(t), params(p), iden(i) {}
+headerNode::headerNode(typeClass *t, paramNode *p, Id *i) : Node(), headType(t), params(p), iden(i) {}
 void headerNode::printNode(std::ostream &out) const {
     out << "Header( " << *iden << ", " << *headType;
 
@@ -44,7 +42,7 @@ void headerNode::printNode(std::ostream &out) const {
 }
 
 
-exprNode::exprNode(char c, lvalNode *l, Const *con, exprNode *left, exprNode *right, bool tf) : op(c), lval(l), constant(con), leftExpr(left), rightExpr(right), tfFlag(tf) {}
+exprNode::exprNode(char c, lvalNode *l, Const *con, exprNode *left, exprNode *right, bool tf) : Node(), op(c), lval(l), constant(con), leftExpr(left), rightExpr(right), tfFlag(tf) {}
 void exprNode::printNode(std::ostream &out) const {
     switch (op) {
     case 'c': out << *constant;
@@ -80,7 +78,7 @@ void exprNode::printNode(std::ostream &out) const {
 }
 
 
-fcallNode::fcallNode(Id *i) : iden(i) {}
+fcallNode::fcallNode(Id *i) : Node(), iden(i) {}
 void fcallNode::printNode(std::ostream &out) const {
     out << "FuncCall(" << *iden;
     if (args) {
@@ -94,7 +92,7 @@ void fcallNode::printNode(std::ostream &out) const {
 }
 
 
-lvalNode::lvalNode(bool str, Id *i) : isString(str), ident(i) { ind = new vector<exprNode*>(); }
+lvalNode::lvalNode(bool str, Id *i) : Node(), isString(str), ident(i) { ind = new std::vector<exprNode*>(); }
 void lvalNode::printNode(std::ostream &out) const {
     out << *ident;
     for (const auto &index : *ind) {
@@ -103,7 +101,7 @@ void lvalNode::printNode(std::ostream &out) const {
 }
 
 
-ifNode::ifNode(exprNode *e, stmtNode *s) : cond(e), stmt(s) {}
+ifNode::ifNode(exprNode *e, stmtNode *s) : Node(), cond(e), stmt(s) {}
 void ifNode::printNode(std::ostream &out) const {
     auto *statement = stmt;
     if (tail == nullptr && cond) {
@@ -135,7 +133,7 @@ void ifNode::printNode(std::ostream &out) const {
 }
 
 
-stmtNode::stmtNode(string type, stmtNode *body, stmtNode *tail, Id *i) : stmtType(type), stmtBody(body), stmtTail(tail), tag(i) {}
+stmtNode::stmtNode(std::string type, stmtNode *body, stmtNode *tail, Id *i) : Node(), stmtType(type), stmtBody(body), stmtTail(tail), tag(i) {}
 void stmtNode::printNode(std::ostream &out) const {
     if (stmtType == "asgn") out << *lval << " := " << *exp;
     else if (stmtType == "skip") out << "skip";
@@ -176,7 +174,8 @@ void stmtNode::printNode(std::ostream &out) const {
     }
     else if (stmtType == "pc") out << "ProcCall: " << *exp;
     else if (stmtType == "def") out << *funcDef;
-    else if (stmtType == "decl") {
+    else if (stmtType == "decl") out << "FuncDecl( " << *funcDef->head << " )";
+    else if (stmtType == "vardecl") {
         out << "VarDecl( ";
         for (const auto &name : *(varNames)) {
             out << *varType << " " << name;
@@ -184,11 +183,11 @@ void stmtNode::printNode(std::ostream &out) const {
         }
         out << " )";
     }
-    else out << "uknown";
+    else out << "unknown";
 }
 
 
-fdefNode::fdefNode(headerNode *h, stmtNode *b) : head(h), body(b) {}
+fdefNode::fdefNode(headerNode *h, stmtNode *b) : Node(), head(h), body(b) {}
 void fdefNode::printNode(std::ostream &out) const {
     out << "FuncDef( " << *(head) << " {\n";
     auto *current = body;
