@@ -61,6 +61,7 @@ public:
     void printNode(std::ostream& os) const override;
     bool isArray() const override;
     Type getType() const override;
+    Type getBaseType() const;
 private:
     typeClass* baseType;
     Const *size;

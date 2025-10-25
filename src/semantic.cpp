@@ -47,8 +47,8 @@ typeClass *exprNode::semanticCheck(SymbolTable &sym) {
             return &intType;
         }
         case 'x': {
-            static basicType charType(TYPE_CHAR);
-            return &charType;
+            static basicType byteType(TYPE_BYTE);
+            return &byteType;
         }
         case 'b': {
             static basicType byteType(TYPE_BYTE);
@@ -248,13 +248,8 @@ void submitBuiltInFunctions(SymbolTable &sym) {
     sym.addFunction(new headerNode(
         tVoid,
         new paramNode(
-            new vector<string>{"n"},
-            tInt,
-            new paramNode(
-                new vector<string>{"s"},
-                tByteArr,
-                nullptr
-            )
+            new vector<string>{"n"}, tInt,
+            new paramNode(new vector<string>{"s"}, tByteArr, nullptr)
         ),
         new Id("readString")
     ));
@@ -284,13 +279,8 @@ void submitBuiltInFunctions(SymbolTable &sym) {
     sym.addFunction(new headerNode(
         tInt,
         new paramNode(
-            new vector<string>{"s1"},
-            tByteArr,
-            new paramNode(
-                new vector<string>{"s2"},
-                tByteArr,
-                nullptr
-            )
+            new vector<string>{"s1"}, tByteArr,
+            new paramNode(new vector<string>{"s2"}, tByteArr, nullptr)
         ),
         new Id("strcmp")
     ));
@@ -299,13 +289,8 @@ void submitBuiltInFunctions(SymbolTable &sym) {
     sym.addFunction(new headerNode(
         tVoid,
         new paramNode(
-            new vector<string>{"trg"},
-            tByteArr,
-            new paramNode(
-                new vector<string>{"src"},
-                tByteArr,
-                nullptr
-            )
+            new vector<string>{"trg"}, tByteArr,
+            new paramNode(new vector<string>{"src"}, tByteArr, nullptr)
         ),
         new Id("strcpy")
     ));
@@ -314,13 +299,8 @@ void submitBuiltInFunctions(SymbolTable &sym) {
     sym.addFunction(new headerNode(
         tVoid,
         new paramNode(
-            new vector<string>{"trg"},
-            tByteArr,
-            new paramNode(
-                new vector<string>{"src"},
-                tByteArr,
-                nullptr
-            )
+            new vector<string>{"trg"}, tByteArr,
+            new paramNode(new vector<string>{"src"}, tByteArr, nullptr)
         ),
         new Id("strcat")
     ));

@@ -3,6 +3,7 @@
 /* Types */
 
 basicType::basicType(Type t) : type(t) {}
+Type basicType::getType() const { return this->type; }
 void basicType::printNode(std::ostream& os) const {
     switch (type) {
         case TYPE_INT: os << "int"; break;
@@ -15,21 +16,15 @@ void basicType::printNode(std::ostream& os) const {
     }
 }
 
-Type basicType::getType() const {
-    return this->type;
-}
-
 arrayType::arrayType(typeClass* baseType, Const *s) : baseType(baseType), size(s) {}
 void arrayType::printNode(std::ostream& os) const {
     baseType->printNode(os);
     os << "[" << *size << "]";
 }
 
-Type arrayType::getType() const {
-    return TYPE_ARRAY;
-}
-
 bool arrayType::isArray() const { return true; }
+Type arrayType::getType() const { return TYPE_ARRAY; }
+Type arrayType::getBaseType() const { return baseType->getType(); }
 
 /* SymbolEntry & SymbolTable */
 

@@ -82,13 +82,13 @@ fcallNode::fcallNode(Id *i) : Node(), iden(i) {}
 void fcallNode::printNode(std::ostream &out) const {
     out << "FuncCall(" << *iden;
     if (args) {
-        out << ", ";
+        out << ", Arguments(";
         for (const auto &i : *args) {
             out << *i;
             if (i != args->back()) out << ", ";
         }
     }
-    out << ")";
+    out << "))";
 }
 
 

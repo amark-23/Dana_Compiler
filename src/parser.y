@@ -256,8 +256,8 @@ id_list
       ;
 
 expr_list
-      : expr                                                                                    { lastArg->push_back($1); }
-      | expr ',' expr_list                                                                      { lastArg->push_back($1); }
+      : expr                                                                                    { lastArg->insert(lastArg->begin(), $1); }
+      | expr ',' expr_list                                                                      { lastArg->insert(lastArg->begin(), $1); }
       ;
 
 %%
@@ -285,6 +285,7 @@ int main() {
             fprintf(stderr, RED "Error at line %d:" RESET " %s\n" RESET, e.line, e.what());
             result = 1;
       }
+      /* st.printAll(std::cout); */
       free(indent_stack);
       return result;
 }
