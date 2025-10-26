@@ -24,7 +24,8 @@ void arrayType::printNode(std::ostream& os) const {
 
 bool arrayType::isArray() const { return true; }
 Type arrayType::getType() const { return TYPE_ARRAY; }
-Type arrayType::getBaseType() const { return baseType->getType(); }
+typeClass* arrayType::getBaseType() const { return baseType; }
+Const* arrayType::getSize() const { return size; }
 
 /* SymbolEntry & SymbolTable */
 

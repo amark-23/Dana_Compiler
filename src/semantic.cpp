@@ -110,24 +110,54 @@ typeClass *exprNode::semanticCheck(SymbolTable &sym) {
 }
 
 typeClass *lvalNode::semanticCheck(SymbolTable &sym) {
-    if (!ident) throw SemanticError("Invalid identifier", this->lineno);
+    if (!ident) throw SemanticError("Invalid identifier in lval", this->lineno);
     if (isString) {
         static arrayType strType(new basicType(TYPE_BYTE), new Const(0));
         return &strType;
     }
+
     SymbolEntry *entry = sym.lookup(ident->name);
     if (!entry) throw SemanticError("Undeclared variable '" + ident->name + "'", this->lineno);
+    typeClass *curType = entry->type;
+    int depth = 0;
 
-    typeClass *baseType = entry->type;
     if (ind && !ind->empty()) {
-        if (!baseType->isArray()) throw SemanticError("Variable '" + ident->name + "' is not an array", this->lineno);
         for (auto *idx : *ind) {
-            typeClass *idxT = idx->semanticCheck(sym);
+            auto idxType = idx->semanticCheck(sym);
             static basicType intType(TYPE_INT);
-            if (!sameType(idxT, &intType)) throw SemanticError("Array index for '" + ident->name + "' must be int", this->lineno);
+
+            if (idxType->getType() != TYPE_INT) throw SemanticError("Array index for '" + ident->name + "' must be int", this->lineno);
+            if (!curType->isArray()) throw SemanticError("Too many indices in array access of '" + ident->name + "'", this->lineno);
+
+            arrayType *arrT = dynamic_cast<arrayType*>(curType);
+            if (!arrT) throw SemanticError("Internal error: invalid array type for '" + ident->name + "'", this->lineno);
+
+            curType = arrT->getBaseType();
+            depth++;
         }
     }
-    return baseType;
+
+    typeClass *resultType = curType;
+
+    if (entry->type->isArray()) {
+        arrayType *original = dynamic_cast<arrayType*>(entry->type);
+        int remaining = 0;
+        arrayType *tmp = original;
+        while (tmp && tmp->isArray()) {
+            remaining++;
+            tmp = dynamic_cast<arrayType*>(tmp->getBaseType());
+        }
+        int totalDims = remaining;
+        int remainingDims = std::max(0, totalDims - depth);
+
+        tmp = dynamic_cast<arrayType*>(entry->type);
+        while (remainingDims-- > 0 && tmp && tmp->isArray()) {
+            resultType = new arrayType(resultType, tmp->getSize());
+            tmp = dynamic_cast<arrayType*>(tmp->getBaseType());
+        }
+    }
+
+    return resultType;
 }
 
 void stmtNode::semanticCheck(SymbolTable &sym) {

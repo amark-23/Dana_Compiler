@@ -48,11 +48,6 @@ int process_indent(char* line) {
 
 char charValidation(std::string s) {
     char c = 0;
-    /* yytext layout examples:
-       'a'    -> yytext[0]='\'', yytext[1]='a', yytext[2]='\''
-       '\n'   -> yytext[0]='\'', yytext[1]='\\', yytext[2]='n', yytext[3]='\''
-       '\x41' -> yytext[0]='\'', yytext[1]='\\', yytext[2]='x', yytext[3]='4', yytext[4]='1', yytext[5]='\''
-    */
     if (yytext[1] == '\\') {
         char esc = yytext[2];
         switch (esc) {
@@ -64,7 +59,6 @@ char charValidation(std::string s) {
             case '\'': c = '\''; break;
             case '\"': c = '\"'; break;
             case 'x': {
-                /* parse two hex digits: yytext[3], yytext[4] */
                 int hi = 0, lo = 0;
                 if (isxdigit((unsigned char)yytext[3]) && isxdigit((unsigned char)yytext[4])) {
                     auto hexval = [](char h) -> int {
@@ -80,7 +74,7 @@ char charValidation(std::string s) {
                 break;
             }
             default:
-                c = esc; /* unknown escape -> take the char literally */
+                c = esc;
                 break;
         }
     } else c = yytext[1];
@@ -136,7 +130,8 @@ E    \\(n|t|r|0|\\|\'|\"|x{H}{H})
 \'([^\"\'\\]|{E})\'                                             { yylval.constval = charValidation(yytext); return T_char_const; }
 
 [ \t]+ { ; }                                                    /* Ignore spaces and tabs */
-^[ \t]*(#.*)?\n { ; }                                           /* Single-line comments, blank lines*/
+"#"[^\n]* { ; }                                                 /* Ignore inline or standalone comments */
+^[ \t]*\n { ; }                                                 /* Ignore completely blank lines */
 "(*" { BEGIN(COMMENT); comment_depth = 1; }                     /* Multi-line comment handling */
 <COMMENT>"(*" { comment_depth++; }                              /* Handle Nested Comments */
 <COMMENT>"*)" { if (--comment_depth == 0) BEGIN(INITIAL);}      /* Exit comment state */
@@ -189,7 +184,7 @@ E    \\(n|t|r|0|\\|\'|\"|x{H}{H})
 %%
 
 void stackinit() {
-    indent_stack_size = 10;  // Initial capacity
+    indent_stack_size = 10;
     indent_stack = (unsigned int*)malloc(indent_stack_size * sizeof(unsigned int));
     if (!indent_stack) {
         fprintf(stderr, "Error: Memory allocation failed for indentation stack\n");

@@ -1,0 +1,3 @@
+[submodule "compilersNTUA"]
+	path = compilersNTUA
+	url = https://github.com/kostis/ntua_compilers.git
