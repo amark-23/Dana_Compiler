@@ -104,6 +104,12 @@ public:
     SymbolEntry* lookupCurrentScope(std::string name);
     headerNode* lookupFunction(std::string name);
 
+    int loopDepth = 0;
+
+    void enterLoop() { loopDepth++; }
+    void exitLoop()  { if (loopDepth > 0) loopDepth--; }
+    bool insideLoop() const { return loopDepth > 0; }
+
     void printCurrentScope(std::ostream& os) const;
     void printAll(std::ostream& os) const;
 

@@ -29,7 +29,7 @@ int process_indent(char* line) {
     current_indent = whitespace_cntr(line);
     if (*line == '\n' || *line == '\r' || *line == '#' || *line == '\0') return 0;
     int dedents = 0;
-    // Dynamically resize 
+    // Dynamically resize
     if (level + 1 >= indent_stack_size) {
         indent_stack_size *= 2;  // Double the size
         indent_stack = (unsigned int*)realloc(indent_stack, indent_stack_size * sizeof(unsigned int));

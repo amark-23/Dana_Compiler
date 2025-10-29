@@ -87,7 +87,8 @@ typeClass *exprNode::semanticCheck(SymbolTable &sym) {
             static basicType intType(TYPE_INT);
             if (!lt && rt) return rt;
             if (!rt && lt) return lt;
-            if (!sameType(lt, rt)) throw SemanticError("Arithmetic type mismatch", this->lineno);
+            std::string opStr(1, op);
+            if (!sameType(lt, rt)) throw SemanticError("Type mismatch in '" + opStr + "' expression (" + typeToString(lt->getType()) + " " + opStr + " " + typeToString(rt->getType()) + ")", this->lineno);
             return lt;
         }
         case '=': case '<': case '>': case 'g': case 'l': case 'd': case 'a':
@@ -160,6 +161,7 @@ void stmtNode::semanticCheck(SymbolTable &sym) {
         sym.exitScope();
     }
     else if (stmtType == "loop") {
+        sym.enterLoop();
         sym.enterScope();
         stmtNode *bodyStmt = stmtBody;
         while (bodyStmt) {
@@ -167,6 +169,7 @@ void stmtNode::semanticCheck(SymbolTable &sym) {
             bodyStmt = bodyStmt->tail;
         }
         sym.exitScope();
+        sym.exitLoop();
     }
     else if (stmtType == "pc") {
         if (!exp) throw SemanticError("ProcCall missing expression", this->lineno);
@@ -178,8 +181,9 @@ void stmtNode::semanticCheck(SymbolTable &sym) {
         if (!funcDef) throw SemanticError("Function definition missing body", this->lineno);
         funcDef->semanticCheck(sym);
     }
-    else if (stmtType == "return") 
-        if (exp) exp->semanticCheck(sym);
+    else if (stmtType == "return") { if (exp) exp->semanticCheck(sym); }
+    else if (stmtType == "break")  { if (!sym.insideLoop()) throw SemanticError("'break' used outside of any loop", this->lineno); }
+    else if (stmtType == "continue") { if (!sym.insideLoop()) throw SemanticError("'continue' used outside of any loop", this->lineno); }
 
     if (tail) tail->semanticCheck(sym);
 }
