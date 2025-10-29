@@ -125,20 +125,20 @@ opt_fpar
 
 fpar_type
       : "int"                                                                                         { $$ = new basicType(TYPE_INT); }
-      | "byte"                                                                                        { $$ = new basicType(TYPE_BYTE); }
+      | "byte"                                                                                        { $$ = new basicType(TYPE_CHAR); }
       | array_type                                                                                    { $$ = $1; }
       ;
 
 ref_data_type
       : T_ref "int"                                                                                   { $$ = new basicType(TYPE_INT); }
-      | T_ref "byte"                                                                                  { $$ = new basicType(TYPE_BYTE); }
+      | T_ref "byte"                                                                                  { $$ = new basicType(TYPE_CHAR); }
       ;
 
 array_type
       : "int" '[' ']'                                                                                 { $$ = new arrayType(new basicType(TYPE_INT), new Const(0)); }
-      | "byte" '[' ']'                                                                                { $$ = new arrayType(new basicType(TYPE_BYTE), new Const(0)); }
+      | "byte" '[' ']'                                                                                { $$ = new arrayType(new basicType(TYPE_CHAR), new Const(0)); }
       | "int" '[' T_num_const ']'                                                                     { $$ = new arrayType(new basicType(TYPE_INT), new Const($3)); }
-      | "byte" '[' T_num_const ']'                                                                    { $$ = new arrayType(new basicType(TYPE_BYTE), new Const($3)); }
+      | "byte" '[' T_num_const ']'                                                                    { $$ = new arrayType(new basicType(TYPE_CHAR), new Const($3)); }
       | array_type '[' T_num_const ']'                                                                { $$ = new arrayType($1, new Const($3)); }
       ; 
 
@@ -154,7 +154,7 @@ type
 
 data_type
       : "int"                                                                                         { $$ = new basicType(TYPE_INT); }
-      | "byte"                                                                                        { $$ = new basicType(TYPE_BYTE); }
+      | "byte"                                                                                        { $$ = new basicType(TYPE_CHAR); }
       ;
 
 local_def_list

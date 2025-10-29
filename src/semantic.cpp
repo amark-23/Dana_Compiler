@@ -25,8 +25,8 @@ void if_semanticCheck(ifNode *node, SymbolTable &sym) {
     if (!node) return;
     if (node->cond) {
         typeClass *condType = node->cond->semanticCheck(sym);
-        static basicType byteType(TYPE_BYTE);
-        if (!sameType(condType, &byteType)) throw SemanticError("Condition must be of integer (boolean) type " + typeToString(condType->getType()), node->lineno);
+        static basicType boolType(TYPE_BOOL);
+        if (!sameType(condType, &boolType)) throw SemanticError("Condition must be of integer (boolean) type " + typeToString(condType->getType()), node->lineno);
     }
 
     sym.enterScope();
@@ -47,12 +47,12 @@ typeClass *exprNode::semanticCheck(SymbolTable &sym) {
             return &intType;
         }
         case 'x': {
-            static basicType byteType(TYPE_BYTE);
-            return &byteType;
+            static basicType charType(TYPE_CHAR);
+            return &charType;
         }
         case 'b': {
-            static basicType byteType(TYPE_BYTE);
-            return &byteType;
+            static basicType charType(TYPE_CHAR);
+            return &charType;
         }
         case 'i': {
             if (!lval) throw SemanticError("Identifier expression missing lval", this->lineno);
@@ -101,8 +101,8 @@ typeClass *exprNode::semanticCheck(SymbolTable &sym) {
                 typeClass *r = rightExpr->semanticCheck(sym);
                 if (!r) throw SemanticError("Null operand for unary logical operator", this->lineno);
             }
-            static basicType byteType(TYPE_BYTE);
-            return &byteType;
+            static basicType boolType(TYPE_BOOL);
+            return &boolType;
         }
         default:
             throw SemanticError("Unknown expression operator '" + std::string(1, op) + "'", this->lineno);
@@ -110,54 +110,25 @@ typeClass *exprNode::semanticCheck(SymbolTable &sym) {
 }
 
 typeClass *lvalNode::semanticCheck(SymbolTable &sym) {
-    if (!ident) throw SemanticError("Invalid identifier in lval", this->lineno);
+    if (!ident) throw SemanticError("Invalid identifier", this->lineno);
     if (isString) {
-        static arrayType strType(new basicType(TYPE_BYTE), new Const(0));
+        static arrayType strType(new basicType(TYPE_CHAR), new Const(0));
         return &strType;
     }
-
     SymbolEntry *entry = sym.lookup(ident->name);
     if (!entry) throw SemanticError("Undeclared variable '" + ident->name + "'", this->lineno);
     typeClass *curType = entry->type;
-    int depth = 0;
-
     if (ind && !ind->empty()) {
-        for (auto *idx : *ind) {
-            auto idxType = idx->semanticCheck(sym);
-            static basicType intType(TYPE_INT);
-
-            if (idxType->getType() != TYPE_INT) throw SemanticError("Array index for '" + ident->name + "' must be int", this->lineno);
-            if (!curType->isArray()) throw SemanticError("Too many indices in array access of '" + ident->name + "'", this->lineno);
-
+        for (auto *idxExpr : *ind) {
             arrayType *arrT = dynamic_cast<arrayType*>(curType);
-            if (!arrT) throw SemanticError("Internal error: invalid array type for '" + ident->name + "'", this->lineno);
-
+            if (!arrT) throw SemanticError("Variable '" + ident->name + "' is not an array", this->lineno);
+            typeClass *idxType = idxExpr->semanticCheck(sym);
+            static basicType intType(TYPE_INT);
+            if (!sameType(idxType, &intType)) throw SemanticError("Array index for '" + ident->name + "' must be int", this->lineno);
             curType = arrT->getBaseType();
-            depth++;
         }
     }
-
-    typeClass *resultType = curType;
-
-    if (entry->type->isArray()) {
-        arrayType *original = dynamic_cast<arrayType*>(entry->type);
-        int remaining = 0;
-        arrayType *tmp = original;
-        while (tmp && tmp->isArray()) {
-            remaining++;
-            tmp = dynamic_cast<arrayType*>(tmp->getBaseType());
-        }
-        int totalDims = remaining;
-        int remainingDims = std::max(0, totalDims - depth);
-
-        tmp = dynamic_cast<arrayType*>(entry->type);
-        while (remainingDims-- > 0 && tmp && tmp->isArray()) {
-            resultType = new arrayType(resultType, tmp->getSize());
-            tmp = dynamic_cast<arrayType*>(tmp->getBaseType());
-        }
-    }
-
-    return resultType;
+    return curType;
 }
 
 void stmtNode::semanticCheck(SymbolTable &sym) {
@@ -207,7 +178,8 @@ void stmtNode::semanticCheck(SymbolTable &sym) {
         if (!funcDef) throw SemanticError("Function definition missing body", this->lineno);
         funcDef->semanticCheck(sym);
     }
-    else if (stmtType == "return")if (exp) exp->semanticCheck(sym);
+    else if (stmtType == "return") 
+        if (exp) exp->semanticCheck(sym);
 
     if (tail) tail->semanticCheck(sym);
 }
@@ -227,9 +199,9 @@ void submitBuiltInFunctions(SymbolTable &sym) {
     using std::string;
 
     auto *tInt   = new basicType(TYPE_INT);
-    auto *tByte  = new basicType(TYPE_BYTE);
     auto *tVoid  = new basicType(TYPE_VOID);
-    auto *tByteArr = new arrayType(new basicType(TYPE_BYTE), new Const(0));
+    auto *tChar  = new basicType(TYPE_CHAR);
+    auto *tStr = new arrayType(tChar, new Const(0));
 
     // decl writeInteger: n as int
     sym.addFunction(new headerNode(
@@ -241,21 +213,21 @@ void submitBuiltInFunctions(SymbolTable &sym) {
     // decl writeByte: b as byte
     sym.addFunction(new headerNode(
         tVoid,
-        new paramNode(new vector<string>{"b"}, tByte, nullptr),
+        new paramNode(new vector<string>{"b"}, tChar, nullptr),
         new Id("writeByte")
     ));
 
     // decl writeChar: b as byte
     sym.addFunction(new headerNode(
         tVoid,
-        new paramNode(new vector<string>{"b"}, tByte, nullptr),
+        new paramNode(new vector<string>{"b"}, tChar, nullptr),
         new Id("writeChar")
     ));
 
     // decl writeString: s as byte []
     sym.addFunction(new headerNode(
         tVoid,
-        new paramNode(new vector<string>{"s"}, tByteArr, nullptr),
+        new paramNode(new vector<string>{"s"}, tStr, nullptr),
         new Id("writeString")
     ));
 
@@ -266,12 +238,12 @@ void submitBuiltInFunctions(SymbolTable &sym) {
 
     // decl readByte is byte
     sym.addFunction(new headerNode(
-        tByte, nullptr, new Id("readByte")
+        tChar, nullptr, new Id("readByte")
     ));
 
     // decl readChar is byte
     sym.addFunction(new headerNode(
-        tByte, nullptr, new Id("readChar")
+        tChar, nullptr, new Id("readChar")
     ));
 
     // decl readString: n as int, s as byte []
@@ -279,7 +251,7 @@ void submitBuiltInFunctions(SymbolTable &sym) {
         tVoid,
         new paramNode(
             new vector<string>{"n"}, tInt,
-            new paramNode(new vector<string>{"s"}, tByteArr, nullptr)
+            new paramNode(new vector<string>{"s"}, tStr, nullptr)
         ),
         new Id("readString")
     ));
@@ -287,13 +259,13 @@ void submitBuiltInFunctions(SymbolTable &sym) {
     // decl extend is int: b as byte
     sym.addFunction(new headerNode(
         tInt,
-        new paramNode(new vector<string>{"b"}, tByte, nullptr),
+        new paramNode(new vector<string>{"b"}, tChar, nullptr),
         new Id("extend")
     ));
 
     // decl shrink is byte: i as int
     sym.addFunction(new headerNode(
-        tByte,
+        tChar,
         new paramNode(new vector<string>{"i"}, tInt, nullptr),
         new Id("shrink")
     ));
@@ -301,7 +273,7 @@ void submitBuiltInFunctions(SymbolTable &sym) {
     // decl strlen is int: s as byte []
     sym.addFunction(new headerNode(
         tInt,
-        new paramNode(new vector<string>{"s"}, tByteArr, nullptr),
+        new paramNode(new vector<string>{"s"}, tStr, nullptr),
         new Id("strlen")
     ));
 
@@ -309,8 +281,8 @@ void submitBuiltInFunctions(SymbolTable &sym) {
     sym.addFunction(new headerNode(
         tInt,
         new paramNode(
-            new vector<string>{"s1"}, tByteArr,
-            new paramNode(new vector<string>{"s2"}, tByteArr, nullptr)
+            new vector<string>{"s1"}, tStr,
+            new paramNode(new vector<string>{"s2"}, tStr, nullptr)
         ),
         new Id("strcmp")
     ));
@@ -319,8 +291,8 @@ void submitBuiltInFunctions(SymbolTable &sym) {
     sym.addFunction(new headerNode(
         tVoid,
         new paramNode(
-            new vector<string>{"trg"}, tByteArr,
-            new paramNode(new vector<string>{"src"}, tByteArr, nullptr)
+            new vector<string>{"trg"}, tStr,
+            new paramNode(new vector<string>{"src"}, tStr, nullptr)
         ),
         new Id("strcpy")
     ));
@@ -329,8 +301,8 @@ void submitBuiltInFunctions(SymbolTable &sym) {
     sym.addFunction(new headerNode(
         tVoid,
         new paramNode(
-            new vector<string>{"trg"}, tByteArr,
-            new paramNode(new vector<string>{"src"}, tByteArr, nullptr)
+            new vector<string>{"trg"}, tStr,
+            new paramNode(new vector<string>{"src"}, tStr, nullptr)
         ),
         new Id("strcat")
     ));

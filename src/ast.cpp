@@ -87,8 +87,9 @@ void fcallNode::printNode(std::ostream &out) const {
             out << *i;
             if (i != args->back()) out << ", ";
         }
+        out << ")";
     }
-    out << "))";
+    out << ")";
 }
 
 

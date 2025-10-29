@@ -16,10 +16,14 @@ void basicType::printNode(std::ostream& os) const {
     }
 }
 
-arrayType::arrayType(typeClass* baseType, Const *s) : baseType(baseType), size(s) {}
+arrayType::arrayType(typeClass* baseT, Const *s) : baseType(baseT), size(s) {}
 void arrayType::printNode(std::ostream& os) const {
-    baseType->printNode(os);
-    os << "[" << *size << "]";
+    if (baseType) baseType->printNode(os);
+    else os << "NULL_BASE";
+    os << "[";
+    if (size) os << *size;
+    else os << "NULL_SIZE";
+    os << "]";
 }
 
 bool arrayType::isArray() const { return true; }

@@ -57,7 +57,7 @@ private:
 
 class arrayType : public typeClass {
 public:
-    arrayType(typeClass* baseType, Const *s);
+    arrayType(typeClass* baseT, Const *s);
     void printNode(std::ostream& os) const override;
     bool isArray() const override;
     Type getType() const override;
