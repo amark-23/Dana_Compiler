@@ -2,9 +2,9 @@
 /.vscode
 
 #Ignore the dana generated files
-src/dana
-src/*.o
-src/lexer.cpp
-src/parser.cpp
-src/parser.hpp
-src/parser.output
+dana
+*.o
+lexer.cpp
+parser.cpp
+parser.hpp
+parser.output
