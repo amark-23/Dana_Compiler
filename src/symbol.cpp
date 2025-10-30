@@ -8,7 +8,6 @@ void basicType::printNode(std::ostream& os) const {
     switch (type) {
         case TYPE_INT: os << "int"; break;
         case TYPE_BYTE: os << "byte"; break;
-        case TYPE_REAL: os << "real"; break;
         case TYPE_CHAR: os << "char"; break;
         case TYPE_VOID: os << "void"; break;
         case TYPE_BOOL: os << "bool"; break;

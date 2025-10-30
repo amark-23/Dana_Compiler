@@ -2,6 +2,7 @@
 #include "ast.hpp"
 #include "lexer.hpp"
 #include <cstdio>
+#include <cstring>
 #include <cstdlib>
 #include <vector>
 #include <string>
@@ -263,7 +264,47 @@ expr_list
 %%
 
 void yyerror(const char *msg) {
-      fprintf(stderr, RED "%s" RESET " at line " RED "%d" RESET " : " RED "%s\n" RESET, msg, yylineno, yytext);
+    extern int yylineno;
+    extern char *yytext;
+
+    const char *token = (yytext && strlen(yytext) > 0) ? yytext : nullptr;
+
+    if (token) {
+        if (strcmp(token, "elif") == 0) {
+            fprintf(stderr, RED "Syntax Error" RESET " at line %d: 'elif' used without a preceding 'if'.\n", yylineno);
+            return;
+        }
+        if (strcmp(token, "else") == 0) {
+            fprintf(stderr, RED "Syntax Error" RESET " at line %d: 'else' used without a preceding 'if'.\n", yylineno);
+            return;
+        }
+        if (strcmp(token, "end") == 0) {
+            fprintf(stderr, RED "Syntax Error" RESET " at line %d: unexpected 'end' -- there is no matching 'begin' or block to close.\n", yylineno);
+            return;
+        }
+        if (strcmp(token, "begin") == 0) {
+            fprintf(stderr, RED "Syntax Error" RESET " at line %d: 'begin' appears here (possible misplaced block or incorrect indentation).\n", yylineno);
+            return;
+        }
+        if (strcmp(token, "def") == 0) {
+            fprintf(stderr, RED "Syntax Error" RESET " at line %d: misplaced or malformed 'def'. Check function header syntax and indentation.\n", yylineno);
+            return;
+        }
+
+        if (isalpha((unsigned char)token[0]) || token[0] == '_') {
+            fprintf(stderr, RED "Syntax Error" RESET " at line %d: unexpected token '%s' — perhaps missing ':' after a function/proc name or wrong statement syntax.\n", yylineno, token);
+            return;
+        }
+
+        fprintf(stderr, RED "Syntax Error" RESET " at line %d: unexpected token '%s'.\n", yylineno, token);
+        return;
+    }
+
+    if (feof(stdin)) {
+        fprintf(stderr, RED "Syntax Error" RESET " at end of file (line %d): unexpected end of input — likely a missing 'end', 'else', or ':' or an unmatched block.\n", yylineno);
+    } else {
+        fprintf(stderr, RED "Syntax Error" RESET " at line %d: unexpected end of input — possible missing 'end' or unmatched block.\n", yylineno);
+    }
 }
 
 int main() {
@@ -285,7 +326,6 @@ int main() {
             fprintf(stderr, RED "Error at line %d:" RESET " %s\n" RESET, e.line, e.what());
             result = 1;
       }
-      /* st.printAll(std::cout); */
       free(indent_stack);
       return result;
 }

@@ -13,7 +13,6 @@ class headerNode;
 enum Type {
     TYPE_INT,
     TYPE_BYTE,
-    TYPE_REAL,
     TYPE_CHAR,
     TYPE_VOID,
     TYPE_ARRAY,
@@ -24,7 +23,6 @@ inline std::string typeToString(Type t) {
     switch (t) {
         case TYPE_INT: return "int";
         case TYPE_BYTE: return "byte";
-        case TYPE_REAL: return "real";
         case TYPE_CHAR: return "char";
         case TYPE_VOID: return "void";
         case TYPE_ARRAY: return "array";

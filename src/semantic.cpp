@@ -152,6 +152,9 @@ void stmtNode::semanticCheck(SymbolTable &sym) {
         if (!lval || !exp) throw SemanticError("Invalid assignment statement", this->lineno);
         typeClass *lt = lval->semanticCheck(sym);
         typeClass *rt = exp->semanticCheck(sym);
+        if (lt->isArray() && !rt->isArray()) throw SemanticError("Invalid assignment: right-hand expression is not an array.", this->lineno);
+        if (!lt->isArray() && rt->isArray()) throw SemanticError("Invalid assignment: cannot assign an array to a non-array element.", this->lineno);
+        if (lt->isArray() && rt->isArray()) throw SemanticError("Invalid assignment: entire arrays cannot be directly assigned.", this->lineno);
         if (!sameType(lt, rt)) throw SemanticError("Type mismatch in assignment to '" + lval->ident->name + "' (" + typeToString(lt->getType()) + " cannot be converted to " + typeToString(rt->getType()) + ")", this->lineno);
     }
     else if (stmtType == "if") {
