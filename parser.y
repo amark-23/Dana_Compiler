@@ -99,7 +99,7 @@ fdefNode *startFunc;
 %%
 
 program
-      : func_def                                                                                      { /*std::cout << "AST:\n" << *($1) << std::endl;*/ $$ = $1; startFunc = $1; }
+      : func_def                                                                                      { std::cout << "AST:\n" << *($1) << std::endl; $$ = $1; startFunc = $1; }
       ;
 
 func_def
@@ -136,8 +136,8 @@ ref_data_type
       ;
 
 array_type
-      : "int" '[' ']'                                                                                 { $$ = new arrayType(new basicType(TYPE_INT), new Const(0)); }
-      | "byte" '[' ']'                                                                                { $$ = new arrayType(new basicType(TYPE_CHAR), new Const(0)); }
+      : "int" '[' ']'                                                                                 { $$ = new arrayType(new basicType(TYPE_INT), NULL); }
+      | "byte" '[' ']'                                                                                { $$ = new arrayType(new basicType(TYPE_CHAR), NULL); }
       | "int" '[' T_num_const ']'                                                                     { $$ = new arrayType(new basicType(TYPE_INT), new Const($3)); }
       | "byte" '[' T_num_const ']'                                                                    { $$ = new arrayType(new basicType(TYPE_CHAR), new Const($3)); }
       | array_type '[' T_num_const ']'                                                                { $$ = new arrayType($1, new Const($3)); }
