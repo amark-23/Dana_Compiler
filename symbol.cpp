@@ -16,6 +16,10 @@ void basicType::printNode(std::ostream& os) const {
 }
 
 arrayType::arrayType(typeClass* baseT, Const *s) : baseType(baseT), size(s) {}
+bool arrayType::isArray() const { return true; }
+Type arrayType::getType() const { return TYPE_ARRAY; }
+typeClass* arrayType::getBaseType() const { return baseType; }
+Const* arrayType::getSize() const { return size; }
 void arrayType::printNode(std::ostream& os) const {
     if (baseType) baseType->printNode(os);
     else os << "NULL_BASE";
@@ -25,10 +29,14 @@ void arrayType::printNode(std::ostream& os) const {
     os << "]";
 }
 
-bool arrayType::isArray() const { return true; }
-Type arrayType::getType() const { return TYPE_ARRAY; }
-typeClass* arrayType::getBaseType() const { return baseType; }
-Const* arrayType::getSize() const { return size; }
+refType::refType(typeClass *baseT) : baseType(baseT) {}
+bool refType::isRef() const { return true; }
+Type refType::getType() const { return baseType->getType(); }
+typeClass* refType::getBaseType() const { return baseType; }
+void refType::printNode(std::ostream &os) const {
+        os << "ref ";
+        baseType->printNode(os);
+}
 
 /* SymbolEntry & SymbolTable */
 

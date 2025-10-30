@@ -6,6 +6,13 @@
 
 bool sameType(typeClass *a, typeClass *b) {
     if (!a || !b) return false;
+    if (a->isRef() && b->isRef()) {
+        auto *ra = dynamic_cast<refType*>(a);
+        auto *rb = dynamic_cast<refType*>(b);
+        return sameType(ra->getBaseType(), rb->getBaseType());
+    }
+    if (a->isRef() && !b->isRef()) return sameType(dynamic_cast<refType*>(a)->getBaseType(), b);
+    if (!a->isRef() && b->isRef()) return sameType(a, dynamic_cast<refType*>(b)->getBaseType());
     return a->getType() == b->getType();
 }
 

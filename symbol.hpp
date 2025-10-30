@@ -37,6 +37,7 @@ public:
     virtual void printNode(std::ostream& os) const = 0;
     virtual bool isArray() const { return false; }
     virtual Type getType() const = 0;
+    virtual bool isRef() const { return false; }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const typeClass& t) {
@@ -64,6 +65,17 @@ public:
 private:
     typeClass* baseType;
     Const *size;
+};
+
+class refType : public typeClass {
+public:
+    refType(typeClass *baseT);
+    bool isRef() const override;
+    Type getType() const override;
+    typeClass* getBaseType() const;
+    void printNode(std::ostream &os) const override;
+private:
+    typeClass *baseType;
 };
 
 class SemanticError : public std::runtime_error {

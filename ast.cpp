@@ -18,7 +18,6 @@ void Const::printNode(std::ostream &out) const {
 paramNode::paramNode(std::vector<std::string> *n, typeClass *type, paramNode *t) : Node(), names(n), types(type), tail(t) {}
 void paramNode::printNode(std::ostream &out) const {
     for (const auto &name : *(names)) {
-        if (ref) out << "ref ";
         out << *types << " " << name;
         if (tail || name != names->back()) out << ", ";
     }

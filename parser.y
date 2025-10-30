@@ -99,7 +99,7 @@ fdefNode *startFunc;
 %%
 
 program
-      : func_def                                                                                      { std::cout << "AST:\n" << *($1) << std::endl; $$ = $1; startFunc = $1; }
+      : func_def                                                                                      { /*std::cout << "AST:\n" << *($1) << std::endl;*/ $$ = $1; startFunc = $1; }
       ;
 
 func_def
@@ -131,8 +131,8 @@ fpar_type
       ;
 
 ref_data_type
-      : T_ref "int"                                                                                   { $$ = new basicType(TYPE_INT); }
-      | T_ref "byte"                                                                                  { $$ = new basicType(TYPE_CHAR); }
+      : T_ref "int"                                                                                   { $$ = new refType(new basicType(TYPE_INT)); }
+      | T_ref "byte"                                                                                  { $$ = new refType(new basicType(TYPE_CHAR)); }
       ;
 
 array_type
