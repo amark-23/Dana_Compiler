@@ -1,0 +1,56 @@
+def main
+  def fibonacci is int: n as int
+    if n <= 0:
+      return: 0
+    elif n = 1:
+      return: 1
+    else:
+      return: fibonacci(n-1) + fibonacci(n-2)
+  
+  def iterativeFib is int: n as int
+    var a b c i is int
+    
+    if n <= 0:
+      return: 0
+    elif n = 1:
+      return: 1
+    
+    a := 0
+    b := 1
+    i := 2
+    
+    loop:
+      if i > n:
+        break
+      
+      c := a + b
+      a := b
+      b := c
+      i := i + 1
+    
+    return: b
+  
+  var num i is int
+  
+  writeString: "Enter a number: "
+  num := readInteger()
+  
+  writeString: "Fibonacci series up to "
+  writeInteger: num
+  writeString: ":\n"
+  
+  i := 0
+  loop:
+    if i > num:
+      break
+    
+    writeInteger: iterativeFib(i)
+    writeString: " "
+    i := i + 1
+  
+  writeString: "\n"
+  writeString: "Fibonacci("
+  writeInteger: num
+  writeString: ") = "
+  writeInteger: fibonacci(num)
+  writeString: "\n"
