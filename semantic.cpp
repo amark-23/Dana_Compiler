@@ -40,7 +40,7 @@ void if_semanticCheck(ifNode *node, SymbolTable &sym) {
     stmtNode *stmt = node->stmt;
     while (stmt) {
         stmt->semanticCheck(sym);
-        stmt = stmt->tail;
+        stmt = stmt->stmtTail;
     }
     sym.exitScope();
 
@@ -176,7 +176,7 @@ void stmtNode::semanticCheck(SymbolTable &sym) {
         stmtNode *bodyStmt = stmtBody;
         while (bodyStmt) {
             bodyStmt->semanticCheck(sym);
-            bodyStmt = bodyStmt->tail;
+            bodyStmt = bodyStmt->stmtTail;
         }
         sym.exitScope();
         sym.exitLoop();
@@ -195,7 +195,7 @@ void stmtNode::semanticCheck(SymbolTable &sym) {
     else if (stmtType == "break")  { if (!sym.insideLoop()) throw SemanticError("'break' used outside of any loop", this->lineno); }
     else if (stmtType == "continue") { if (!sym.insideLoop()) throw SemanticError("'continue' used outside of any loop", this->lineno); }
 
-    if (tail) tail->semanticCheck(sym);
+    if (stmtTail) stmtTail->semanticCheck(sym);
 }
 
 void fdefNode::semanticCheck(SymbolTable &sym) {

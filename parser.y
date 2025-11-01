@@ -20,7 +20,6 @@ extern size_t level;
 extern void stackinit();
 
 std::stack<fdefNode*> fNames;
-std::vector<exprNode*> *lastArg;
 
 fdefNode *startFunc;
 
@@ -37,6 +36,7 @@ fdefNode *startFunc;
       ifNode *ifStmt;
       typeClass *types;
       std::vector<std::string> *idList;
+      std::vector<exprNode*> *exprvec;
 
       int constval;
       char *idstr;
@@ -81,7 +81,8 @@ fdefNode *startFunc;
 
 %type<func> program func_def func_decl
 %type<stmt> stmt stmt_list local_def local_def_list loop
-%type<expr> expr cond expr_list
+%type<expr> expr cond
+%type<exprvec> expr_list
 %type<funcCall> func_call proc_call
 %type<ifStmt> if_stmts opt_elif_else
 %type<header> header
@@ -103,7 +104,7 @@ program
       ;
 
 func_def
-      : T_def header {fNames.push(new fdefNode($2, NULL)); } local_def_list auto_end                  { $$ = new fdefNode($2, $4); fNames.pop(); }
+      : T_def header { fNames.push(new fdefNode($2, NULL)); } local_def_list auto_end                 { $$ = new fdefNode($2, $4); fNames.pop(); }
       ;
 
 func_decl
@@ -144,8 +145,8 @@ array_type
       ; 
 
 stmt_list
-      : stmt                                                                                          { $$ = $1; }
-      | stmt stmt_list                                                                                { $1->tail = $2; $$ = $1; } 
+      : stmt                                                                                          { $1->stmtTail = NULL; $$ = $1; }
+      | stmt stmt_list                                                                                { $1->stmtTail = $2; $$ = $1; } 
       ;
 
 type
@@ -161,54 +162,54 @@ data_type
 local_def_list
       : T_begin stmt_list T_end                                                                       { $$ = $2; }
       | stmt_list                                                                                     { $$ = $1; }
-      | local_def local_def_list                                                                      { $$ = $1; $1->tail = $2; }
+      | local_def local_def_list                                                                      { $$ = $1; $1->stmtTail = $2; }
       ;
 
 local_def
-      : func_def                                                                                      { $$ = new stmtNode("def", NULL, NULL, NULL); $$->funcDef = $1; }
-      | func_decl                                                                                     { $$ = new stmtNode("decl", NULL, NULL, NULL); $$->funcDef = $1; }
-      | "var" id_list "is" type                                                                       { $$ = new stmtNode("vardecl", NULL, NULL, NULL); $$->varNames = $2; $$->varType = $4; }
+      : func_def                                                                                      { $$ = new stmtNode("def", NULL, NULL, NULL); $$->funcDef = $1; $$->stmtTail = NULL; }
+      | func_decl                                                                                     { $$ = new stmtNode("decl", NULL, NULL, NULL); $$->funcDef = $1; $$->stmtTail = NULL; }
+      | "var" id_list "is" type                                                                       { $$ = new stmtNode("vardecl", NULL, NULL, NULL); $$->varNames = $2; $$->varType = $4; $$->stmtTail = NULL; }
       ;
 
 stmt
-      : "skip"                                                                                        { $$ = new stmtNode("skip", NULL, NULL, NULL); }
-      | l_value ":=" expr                                                                             { $$ = new stmtNode("asgn", NULL, NULL, NULL); $$->lval = $1; $$->exp = $3; }
-      | proc_call                                                                                     { $$ = new stmtNode("pc", NULL, NULL, NULL); $$->exp = new exprNode('f',NULL,0,NULL,NULL, 0); $$->exp->func = $1; }
-      | "exit"                                                                                        { $$ = new stmtNode("exit", NULL, NULL, NULL); $$->funcDef = fNames.top(); }
-      | "return" ':' expr                                                                             { $$ = new stmtNode("return", NULL, NULL, NULL); $$->exp = $3; $$->funcDef = fNames.top(); }
-      | if_stmts                                                                                      { $$ = new stmtNode("if", NULL, NULL, NULL); $$->ifnode = $1; }
-      | loop                                                                                          { $$ = $1; }
-      | "break"                                                                                       { $$ = new stmtNode("break", NULL, NULL, NULL); }
-      | "break" ':' T_id                                                                              { $$ = new stmtNode("break", NULL, NULL, new Id($3)); }
-      | "continue"                                                                                    { $$ = new stmtNode("continue", NULL, NULL, NULL); }
-      | "continue" ':' T_id                                                                           { $$ = new stmtNode("continue", NULL, NULL, new Id($3)); }
+      : "skip"                                                                                        { $$ = new stmtNode("skip", NULL, NULL, NULL); $$->stmtTail = NULL; }
+      | l_value ":=" expr                                                                             { $$ = new stmtNode("asgn", NULL, NULL, NULL); $$->lval = $1; $$->exp = $3; $$->stmtTail = NULL; }
+      | proc_call                                                                                     { $$ = new stmtNode("pc", NULL, NULL, NULL); $$->exp = new exprNode('f',NULL,0,NULL,NULL, 0); $$->exp->func = $1; $$->stmtTail = NULL; }
+      | "exit"                                                                                        { $$ = new stmtNode("exit", NULL, NULL, NULL); $$->funcDef = fNames.top(); $$->stmtTail = NULL; }
+      | "return" ':' expr                                                                             { $$ = new stmtNode("return", NULL, NULL, NULL); $$->exp = $3; $$->funcDef = fNames.top(); $$->stmtTail = NULL; }
+      | if_stmts                                                                                      { $$ = new stmtNode("if", NULL, NULL, NULL); $$->ifnode = $1; $$->stmtTail = NULL; }
+      | loop                                                                                          { $$ = $1; $$->stmtTail = NULL; }
+      | "break"                                                                                       { $$ = new stmtNode("break", NULL, NULL, NULL); $$->stmtTail = NULL; }
+      | "break" ':' T_id                                                                              { $$ = new stmtNode("break", NULL, NULL, new Id($3)); $$->stmtTail = NULL; }
+      | "continue"                                                                                    { $$ = new stmtNode("continue", NULL, NULL, NULL); $$->stmtTail = NULL; }
+      | "continue" ':' T_id                                                                           { $$ = new stmtNode("continue", NULL, NULL, new Id($3)); $$->stmtTail = NULL; }
       ;
 
 if_stmts
       : "if" cond ':' local_def_list auto_end "else" ':' local_def_list auto_end                      { $$ = new ifNode($2, $4); auto elseNode = new ifNode(NULL, $8); $$->tail = elseNode; elseNode->tail = NULL; }
       | "if" cond ':' local_def_list auto_end "elif" cond ':' local_def_list auto_end opt_elif_else   { $$ = new ifNode($2, $4); auto elseNode = new ifNode($7, $9); $$->tail = elseNode; elseNode->tail = $11; }
-      | "if" cond ':' local_def_list auto_end                                                         { $$ = new ifNode($2, $4); }
+      | "if" cond ':' local_def_list auto_end                                                         { $$ = new ifNode($2, $4); $$->tail = NULL; }
       ;
 
 opt_elif_else
       : /* empty */                                                                                   { $$ = NULL; }
       | "elif" cond ':' local_def_list auto_end opt_elif_else                                         { $$ = new ifNode($2, $4); $$->tail = $6; }
-      | "else" ':' local_def_list auto_end                                                            { $$ = new ifNode(NULL, $3); }
+      | "else" ':' local_def_list auto_end                                                            { $$ = new ifNode(NULL, $3); $$->tail = NULL; }
       ;
 
 loop
-      : "loop" T_id ':' local_def_list auto_end                                                       { $$ = new stmtNode("loop", $4, NULL, new Id($2)); }
-      | "loop" ':' local_def_list auto_end                                                            { $$ = new stmtNode("loop", $3, NULL, NULL); }
+      : "loop" T_id ':' local_def_list auto_end                                                       { $$ = new stmtNode("loop", $4, NULL, new Id($2)); $$->stmtTail = NULL; }
+      | "loop" ':' local_def_list auto_end                                                            { $$ = new stmtNode("loop", $3, NULL, NULL); $$->stmtTail = NULL; }
       ;
 
 proc_call
       : T_id                                                                                          { $$ = new fcallNode(new Id($1)); $$->args = NULL; }
-      | T_id ':' expr_list                                                                            { $$ = new fcallNode(new Id($1)); $$->args = lastArg; lastArg = new std::vector<exprNode*>(); }
+      | T_id ':' expr_list                                                                            { $$ = new fcallNode(new Id($1)); $$->args = $3; }
       ;
 
 func_call
       : T_id '('')'                                                                                   { $$ = new fcallNode(new Id($1)); $$->args = NULL; }
-      | T_id '(' expr_list ')'                                                                        { $$ = new fcallNode(new Id($1)); $$->args = lastArg; lastArg = new std::vector<exprNode*>(); }
+      | T_id '(' expr_list ')'                                                                        { $$ = new fcallNode(new Id($1)); $$->args = $3; }
       ;
 
 l_value
@@ -257,8 +258,8 @@ id_list
       ;
 
 expr_list
-      : expr                                                                                          { lastArg->insert(lastArg->begin(), $1); }
-      | expr ',' expr_list                                                                            { lastArg->insert(lastArg->begin(), $1); }
+      : expr                                                                                          { $$ = new std::vector<exprNode*>(); $$->push_back($1); }
+      | expr ',' expr_list                                                                            { $3->insert($3->begin(), $1); $$ = $3; }
       ;
 
 %%
@@ -312,7 +313,6 @@ int main() {
       SymbolTable st;
       startFunc = NULL;
       fNames = std::stack<fdefNode*>();
-      lastArg = new std::vector<exprNode*>();
 
       submitBuiltInFunctions(st);
       int result = yyparse();

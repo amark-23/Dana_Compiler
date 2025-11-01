@@ -120,7 +120,6 @@ class ifNode : public Node {
 class stmtNode : public Node {
     public:
         stmtNode(std::string type, stmtNode *body, stmtNode *tail, Id *i);
-        stmtNode *tail;
         fdefNode *funcDef;
         typeClass *varType;
         std::vector<std::string> *varNames;

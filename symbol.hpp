@@ -102,6 +102,7 @@ public:
 class SymbolTable {
 public:
     SymbolTable();
+    ~SymbolTable();
 
     void enterScope();
     void exitScope();

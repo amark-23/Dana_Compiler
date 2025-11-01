@@ -60,13 +60,11 @@ void SymbolEntry::print(std::ostream& os) const {
 }
 
 
-SymbolTable::SymbolTable() {
-    enterScope();
-}
+SymbolTable::SymbolTable() { enterScope(); }
 
-void SymbolTable::enterScope() {
-    scopes.emplace_back();
-}
+SymbolTable::~SymbolTable() {}
+
+void SymbolTable::enterScope() { scopes.emplace_back(); }
 
 void SymbolTable::exitScope() {
     if (scopes.empty()) throw std::runtime_error("SymbolTable::exitScope() called with no active scope");

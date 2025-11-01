@@ -108,24 +108,24 @@ void ifNode::printNode(std::ostream &out) const {
         out << " else if " << *cond<< " {"; 
         while(statement) {
             out << *statement;
-            if (statement->tail) out << ", ";
-            statement = statement->tail;
+            if (statement->stmtTail) out << ", ";
+            statement = statement->stmtTail;
         }
     }
     else if (tail == nullptr && cond == nullptr) {
         out << " else {";
         while(statement) {
             out << *statement;
-            if (statement->tail) out << ", ";
-            statement = statement->tail;
+            if (statement->stmtTail) out << ", ";
+            statement = statement->stmtTail;
         }
     }
     else if (cond) {
         out << " else if " << *cond << " {";
         while(statement) {
             out << *statement;
-            if (statement->tail) out << ", ";
-            statement = statement->tail;
+            if (statement->stmtTail) out << ", ";
+            statement = statement->stmtTail;
         }
     }
     else out << "unknown";
@@ -148,19 +148,18 @@ void stmtNode::printNode(std::ostream &out) const {
         if (tag) out << ": " << *tag;
     }
     else if (stmtType == "if") {
-        auto *current = ifnode;
-        auto *statement = current->stmt;
-        out << "if " << *current->cond << " {";
-        while (statement) {
-            out << *statement;
-            if (statement->tail) out << ", ";
-            statement = statement->tail;
+        out << "if " << *ifnode->cond << " {";
+        auto *ifStmt = ifnode->stmt;
+        while (ifStmt) {
+            out << *ifStmt;
+            if (ifStmt->stmtTail) out << ", ";
+            ifStmt = ifStmt->stmtTail;
         }
         out << "}";
-        current = current->tail;
-        while (current) {
-            out << *current;
-            current = current->tail;
+        auto *ifTail = ifnode->tail;
+        while (ifTail) {
+            out << *ifTail;
+            ifTail = ifTail->tail;
         }
     }
     else if (stmtType == "loop") {
@@ -168,7 +167,7 @@ void stmtNode::printNode(std::ostream &out) const {
         auto *current = stmtBody;
         while (current) {
             out << *current << ", ";
-            current = current->tail;
+            current = current->stmtTail;
         }
         out << "endloop )";
     }
@@ -193,7 +192,7 @@ void fdefNode::printNode(std::ostream &out) const {
     auto *current = body;
     while (current) {
         out << "  " << *current << "\n";
-        current = current->tail;
+        current = current->stmtTail;
     }
     out << "})";
 }
