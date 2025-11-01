@@ -14,7 +14,7 @@
 
 extern int yylineno;
 extern char* yytext;
-extern unsigned int *indent_stack;  
+extern unsigned int *indent_stack;
 extern size_t indent_stack_size;
 extern size_t level;
 extern void stackinit();
@@ -166,23 +166,23 @@ local_def_list
       ;
 
 local_def
-      : func_def                                                                                      { $$ = new stmtNode("def", NULL, NULL, NULL); $$->funcDef = $1; $$->stmtTail = NULL; }
-      | func_decl                                                                                     { $$ = new stmtNode("decl", NULL, NULL, NULL); $$->funcDef = $1; $$->stmtTail = NULL; }
-      | "var" id_list "is" type                                                                       { $$ = new stmtNode("vardecl", NULL, NULL, NULL); $$->varNames = $2; $$->varType = $4; $$->stmtTail = NULL; }
+      : func_def                                                                                      { $$ = new stmtNode("def", NULL, NULL, NULL); $$->funcDef = $1; }
+      | func_decl                                                                                     { $$ = new stmtNode("decl", NULL, NULL, NULL); $$->funcDef = $1; }
+      | "var" id_list "is" type                                                                       { $$ = new stmtNode("vardecl", NULL, NULL, NULL); $$->varNames = $2; $$->varType = $4; }
       ;
 
 stmt
-      : "skip"                                                                                        { $$ = new stmtNode("skip", NULL, NULL, NULL); $$->stmtTail = NULL; }
-      | l_value ":=" expr                                                                             { $$ = new stmtNode("asgn", NULL, NULL, NULL); $$->lval = $1; $$->exp = $3; $$->stmtTail = NULL; }
-      | proc_call                                                                                     { $$ = new stmtNode("pc", NULL, NULL, NULL); $$->exp = new exprNode('f',NULL,0,NULL,NULL, 0); $$->exp->func = $1; $$->stmtTail = NULL; }
-      | "exit"                                                                                        { $$ = new stmtNode("exit", NULL, NULL, NULL); $$->funcDef = fNames.top(); $$->stmtTail = NULL; }
-      | "return" ':' expr                                                                             { $$ = new stmtNode("return", NULL, NULL, NULL); $$->exp = $3; $$->funcDef = fNames.top(); $$->stmtTail = NULL; }
-      | if_stmts                                                                                      { $$ = new stmtNode("if", NULL, NULL, NULL); $$->ifnode = $1; $$->stmtTail = NULL; }
-      | loop                                                                                          { $$ = $1; $$->stmtTail = NULL; }
-      | "break"                                                                                       { $$ = new stmtNode("break", NULL, NULL, NULL); $$->stmtTail = NULL; }
-      | "break" ':' T_id                                                                              { $$ = new stmtNode("break", NULL, NULL, new Id($3)); $$->stmtTail = NULL; }
-      | "continue"                                                                                    { $$ = new stmtNode("continue", NULL, NULL, NULL); $$->stmtTail = NULL; }
-      | "continue" ':' T_id                                                                           { $$ = new stmtNode("continue", NULL, NULL, new Id($3)); $$->stmtTail = NULL; }
+      : "skip"                                                                                        { $$ = new stmtNode("skip", NULL, NULL, NULL); }
+      | l_value ":=" expr                                                                             { $$ = new stmtNode("asgn", NULL, NULL, NULL); $$->lval = $1; $$->exp = $3; }
+      | proc_call                                                                                     { $$ = new stmtNode("pc", NULL, NULL, NULL); $$->exp = new exprNode('f',NULL,0,NULL,NULL, 0); $$->exp->func = $1; }
+      | "exit"                                                                                        { $$ = new stmtNode("exit", NULL, NULL, NULL); $$->funcDef = fNames.top(); }
+      | "return" ':' expr                                                                             { $$ = new stmtNode("return", NULL, NULL, NULL); $$->exp = $3; $$->funcDef = fNames.top(); }
+      | if_stmts                                                                                      { $$ = new stmtNode("if", NULL, NULL, NULL); $$->ifnode = $1; }
+      | loop                                                                                          { $$ = $1; }
+      | "break"                                                                                       { $$ = new stmtNode("break", NULL, NULL, NULL); }
+      | "break" ':' T_id                                                                              { $$ = new stmtNode("break", NULL, NULL, new Id($3)); }
+      | "continue"                                                                                    { $$ = new stmtNode("continue", NULL, NULL, NULL); }
+      | "continue" ':' T_id                                                                           { $$ = new stmtNode("continue", NULL, NULL, new Id($3)); }
       ;
 
 if_stmts
@@ -198,8 +198,8 @@ opt_elif_else
       ;
 
 loop
-      : "loop" T_id ':' local_def_list auto_end                                                       { $$ = new stmtNode("loop", $4, NULL, new Id($2)); $$->stmtTail = NULL; }
-      | "loop" ':' local_def_list auto_end                                                            { $$ = new stmtNode("loop", $3, NULL, NULL); $$->stmtTail = NULL; }
+      : "loop" T_id ':' local_def_list auto_end                                                       { $$ = new stmtNode("loop", $4, NULL, new Id($2)); }
+      | "loop" ':' local_def_list auto_end                                                            { $$ = new stmtNode("loop", $3, NULL, NULL); }
       ;
 
 proc_call
