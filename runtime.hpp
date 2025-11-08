@@ -9,16 +9,14 @@
 #include <memory>
 #include <iostream>
 
-// Forward declarations from AST
 class exprNode;
 class fcallNode;
 class lvalNode;
 class fdefNode;
+class headerNode;
 
-// Forward declare Value for recursion
 struct Value;
 
-// Define Value as struct wrapping a variant that can include vectors of shared_ptr<Value>
 struct Value {
     using Inner = std::variant<int, char, bool, std::string, std::vector<std::shared_ptr<Value>>>;
     Inner data;
@@ -30,7 +28,6 @@ struct Value {
     Value(const std::string &v) : data(v) {}
     Value(const std::vector<std::shared_ptr<Value>> &v) : data(v) {}
 
-    // helpers
     bool isInt() const    { return std::holds_alternative<int>(data); }
     bool isChar() const   { return std::holds_alternative<char>(data); }
     bool isBool() const   { return std::holds_alternative<bool>(data); }
@@ -54,7 +51,6 @@ struct Value {
     }
 };
 
-// Runtime environment to hold variable values
 struct RuntimeEnv {
     std::unordered_map<std::string, std::shared_ptr<Value>> vars;
     std::unordered_map<std::string, fdefNode*> functions;
@@ -62,7 +58,6 @@ struct RuntimeEnv {
 
     explicit RuntimeEnv(RuntimeEnv *p = nullptr) : parent(p) {}
 
-    // lookup variable (recursively)
     std::shared_ptr<Value> lookup(const std::string &name) {
         auto it = vars.find(name);
         if (it != vars.end()) return it->second;
@@ -70,10 +65,8 @@ struct RuntimeEnv {
         return nullptr;
     }
 
-    // set variable locally
     void setLocal(const std::string &name, std::shared_ptr<Value> val) { vars[name] = val; }
 
-    // assign or create variable
     void set(const std::string &name, std::shared_ptr<Value> val) {
         std::shared_ptr<Value> existing = lookup(name);
         if (existing) *existing = *val;
@@ -85,14 +78,14 @@ struct RuntimeEnv {
         auto it = functions.find(name);
         return (it != functions.end()) ? it->second : nullptr;
     }
+
+    headerNode *getFunctionHeader(const std::string &name);
 };
 
-// runtime builtins (to be implemented later)
 bool isBuiltin(const std::string &name);
 Value callBuiltin(const std::string &name, const std::vector<Value> &args, RuntimeEnv &env);
 Value callUserFunction(const std::string &name, const std::vector<Value> &args, RuntimeEnv &env);
 
-// runtime exceptions
 struct RuntimeError : public std::runtime_error { using std::runtime_error::runtime_error; };
 
 struct ReturnException : public RuntimeError {
@@ -103,4 +96,4 @@ struct ReturnException : public RuntimeError {
 struct BreakException : public RuntimeError { BreakException(): RuntimeError("break") {} };
 struct ContinueException : public RuntimeError { ContinueException(): RuntimeError("continue") {} };
 
-#endif // RUNTIME_HPP
+#endif

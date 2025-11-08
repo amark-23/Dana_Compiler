@@ -8,20 +8,23 @@
 #include <sstream>
 #include <algorithm>
 
+headerNode *RuntimeEnv::getFunctionHeader(const std::string &name) {
+    fdefNode *fdef = getFunctionDef(name);
+    if (!fdef) return nullptr;
+    return fdef->head;
+}
+
 std::string process_escapes(const std::string& raw_str) {
     std::string result = "";
     for (size_t i = 0; i < raw_str.length(); ++i) {
         if (raw_str[i] == '\\' && i + 1 < raw_str.length()) {
-            // Check the character following the backslash
             switch (raw_str[i + 1]) {
-                case 'n':  result += '\n'; i++; break; // Newline
-                case 't':  result += '\t'; i++; break; // Tab
-                case 'r':  result += '\r'; i++; break; // Carriage Return
-                case '\\': result += '\\'; i++; break; // Literal Backslash
-                case '"':  result += '"'; i++; break;  // Literal Double Quote
-                // Add more escape sequences (e.g., \0, \a, \b) as needed
+                case 'n':  result += '\n'; i++; break;
+                case 't':  result += '\t'; i++; break;
+                case 'r':  result += '\r'; i++; break;
+                case '\\': result += '\\'; i++; break;
+                case '"':  result += '"'; i++; break;
                 default:
-                    // If it's an unrecognized escape sequence, treat the backslash as a literal character
                     result += raw_str[i]; 
                     break;
             }
@@ -32,14 +35,9 @@ std::string process_escapes(const std::string& raw_str) {
     return result;
 }
 
-// -------------------------------
-// Helper: create default Value for a typeClass
-// -------------------------------
 static Value createDefaultValue(typeClass *t) {
     if (!t) return Value(0);
-    // dynamic casts for arrayType, refType, basicType
     if (auto *arr = dynamic_cast<arrayType*>(t)) {
-        // get size (Const*)
         Const *sz = arr->getSize();
         int n = 0;
         if (sz) n = sz->value;
@@ -54,7 +52,6 @@ static Value createDefaultValue(typeClass *t) {
         return Value(vec);
     }
     if (auto *ref = dynamic_cast<refType*>(t)) {
-        // ref behaves like the base type; create default for base
         return createDefaultValue(ref->getBaseType());
     }
     if (auto *b = dynamic_cast<basicType*>(t)) {
@@ -68,13 +65,9 @@ static Value createDefaultValue(typeClass *t) {
             default: return Value(0);
         }
     }
-    // fallback
     return Value(0);
 }
 
-// -------------------------------
-// Id::execute
-// -------------------------------
 Value Id::execute(RuntimeEnv &env) {
     auto sp = env.lookup(name);
     if (!sp) {
@@ -82,33 +75,21 @@ Value Id::execute(RuntimeEnv &env) {
         ss << "Runtime Error at line " << lineno << ": Undefined variable '" << name << "'";
         throw RuntimeError(ss.str());
     }
-    // return copy
     return *sp;
 }
 
-// -------------------------------
-// Const::execute
-// -------------------------------
 Value Const::execute(RuntimeEnv &env) {
     (void)env;
     return Value(value);
 }
 
-// -------------------------------
-// paramNode::bindParams
-//   - Binds actual args into env. Basic (by-value) binding.
-//   - For reference params you need a more advanced strategy; here we
-//     support binding by value. See notes below for ref semantics.
-// -------------------------------
 void paramNode::bindParams(const std::vector<Value> &args, RuntimeEnv &env) {
-    // iterate parameters and args in order
     int idx = 0;
     paramNode *p = this;
     while (p && idx < (int)args.size()) {
         if (p->names) {
             for (auto &nm : *(p->names)) {
                 if (idx >= (int)args.size()) return;
-                // create a shared_ptr copy and setLocal
                 env.setLocal(nm, std::make_shared<Value>(args[idx]));
                 ++idx;
             }
@@ -117,38 +98,33 @@ void paramNode::bindParams(const std::vector<Value> &args, RuntimeEnv &env) {
     }
 }
 
-// -------------------------------
-// exprNode::execute
-// -------------------------------
 Value exprNode::execute(RuntimeEnv &env) {
     switch (op) {
-        case 'c': { // int constant
+        case 'c': {
             if (!constant) throw RuntimeError("Runtime: missing constant at line " + std::to_string(lineno));
             std::cout << constant->value;
             return Value(constant->value);
         }
-        case 'x': { // char constant
+        case 'x': {
             if (!constant) throw RuntimeError("Runtime: missing char constant at line " + std::to_string(lineno));
             std::cout << constant->value;
             return Value(static_cast<char>(constant->value));
         }
-        case 'b': { // boolean literal
+        case 'b': {
             std::cout << tfFlag;
             return Value(tfFlag);
         }
-        case 'i': { // identifier / lval
+        case 'i': {
             if (!lval) throw RuntimeError("Runtime: identifier expression missing lval at line " + std::to_string(lineno));
             return lval->execute(env);
         }
-        case 'f': { // function call
+        case 'f': {
             if (!func || !func->iden) throw RuntimeError("Runtime: invalid function call at line " + std::to_string(lineno));
             return func->execute(env);
         }
 
-        // arithmetic: unary or binary
         case '+': case '-': case '*': case '/': case '%': {
             if (!leftExpr) {
-                // unary + / -
                 Value rv = rightExpr->execute(env);
                 int r = rv.asInt();
                 if (op == '+') return Value(+r);
@@ -173,12 +149,10 @@ Value exprNode::execute(RuntimeEnv &env) {
             break;
         }
 
-        // comparisons
         case '=': case '<': case '>': case 'g': case 'l': case 'd': {
             Value lv = leftExpr ? leftExpr->execute(env) : Value(0);
             Value rv = rightExpr ? rightExpr->execute(env) : Value(0);
 
-            // int
             if (lv.isInt() && rv.isInt()) {
                 int li = lv.asInt();
                 int ri = rv.asInt();
@@ -192,7 +166,6 @@ Value exprNode::execute(RuntimeEnv &env) {
                 }
             }
 
-            // char
             if (lv.isChar() && rv.isChar()) {
                 char lc = lv.asChar();
                 char rc = rv.asChar();
@@ -206,7 +179,6 @@ Value exprNode::execute(RuntimeEnv &env) {
                 }
             }
 
-            // bool
             if (lv.isBool() && rv.isBool()) {
                 bool lb = lv.asBool();
                 bool rb = rv.asBool();
@@ -220,7 +192,6 @@ Value exprNode::execute(RuntimeEnv &env) {
                 }
             }
 
-            // string
             if (lv.isString() && rv.isString()) {
                 std::string ls = lv.asString();
                 std::string rs = rv.asString();
@@ -237,23 +208,21 @@ Value exprNode::execute(RuntimeEnv &env) {
             throw RuntimeError("Runtime: incompatible types in comparison at line " + std::to_string(lineno));
         }
 
-        // logical
-        case 'a': { // and
+        case 'a': {
             bool l = leftExpr->execute(env).asBool();
             bool r = rightExpr->execute(env).asBool();
             return Value(l && r);
         }
-        case 'o': { // or
+        case 'o': {
             bool l = leftExpr->execute(env).asBool();
             bool r = rightExpr->execute(env).asBool();
             return Value(l || r);
         }
-        case 'n': { // not (unary)
+        case 'n': {
             bool r = rightExpr->execute(env).asBool();
             return Value(!r);
         }
 
-        // bitwise ops (on ints)
         case '&': {
             int l = leftExpr->execute(env).asInt();
             int r = rightExpr->execute(env).asInt();
@@ -272,33 +241,24 @@ Value exprNode::execute(RuntimeEnv &env) {
     throw RuntimeError("Runtime: unreachable code in exprNode::execute");
 }
 
-// -------------------------------
-// fcallNode::execute
-// -------------------------------
 Value fcallNode::execute(RuntimeEnv &env) {
     if (!iden) throw RuntimeError("Runtime: invalid function identifier at line " + std::to_string(lineno));
     std::string fname = iden->name;
 
     std::vector<Value> evaluatedArgs;
     if (args) {
-        // args are evaluated in the order stored in vector
         for (auto *e : *args) {
             evaluatedArgs.push_back(e->execute(env));
         }
     }
 
-    // Builtin
     if (isBuiltin(fname)) {
         return callBuiltin(fname, evaluatedArgs, env);
     }
 
-    // User function
     return callUserFunction(fname, evaluatedArgs, env);
 }
 
-// -------------------------------
-// lvalNode::execute  (read value)
-// -------------------------------
 Value lvalNode::execute(RuntimeEnv &env) {
     if (isString) {
         std::string raw_literal = ident->name;
@@ -320,12 +280,10 @@ Value lvalNode::execute(RuntimeEnv &env) {
         throw RuntimeError(ss.str());
     }
 
-    // if no indices => return copy of variable
     if (!ind || ind->empty()) {
         return *sp;
     }
 
-    // traverse indices
     Value current = *sp;
     for (auto *idxExpr : *ind) {
         int idx = idxExpr->execute(env).asInt();
@@ -336,16 +294,11 @@ Value lvalNode::execute(RuntimeEnv &env) {
         if (idx < 0 || idx >= (int)vec.size()) {
             throw RuntimeError("Runtime: array index out of bounds at line " + std::to_string(lineno));
         }
-        // dereference shared_ptr<Value>
         current = *vec[idx];
     }
     return current;
 }
 
-// -------------------------------
-// lvalNode::assign  (assign to lvalue)
-//   - Handles both whole-variable and indexed-element assignments
-// -------------------------------
 void lvalNode::assign(RuntimeEnv &env, const Value &val) {
     if (!ident) throw RuntimeError("Runtime: missing identifier on assign at line " + std::to_string(lineno));
     auto sp = env.lookup(ident->name);
@@ -355,47 +308,36 @@ void lvalNode::assign(RuntimeEnv &env, const Value &val) {
         throw RuntimeError(ss.str());
     }
 
-    // No indices => replace the variable's value
     if (!ind || ind->empty()) {
-        // copy into existing shared_ptr
         *sp = val;
         return;
     }
 
-    // Walk down to the container and assign element
-    std::shared_ptr<Value> container = sp;        // pointer to root value
+    std::shared_ptr<Value> container = sp;
     Value current = *container;
 
-    // We have to walk until the parent of the final index so we can assign into the element slot
     int n = (int)ind->size();
     for (int i = 0; i < n - 1; ++i) {
         int idx = ind->at(i)->execute(env).asInt();
         if (!current.isArray()) throw RuntimeError("Runtime: not an array while assigning at line " + std::to_string(lineno));
         auto &vec = current.asArray();
         if (idx < 0 || idx >= (int)vec.size()) throw RuntimeError("Runtime: array index out of bounds at line " + std::to_string(lineno));
-        // step into this element
         container = vec[idx];
         current = *container;
     }
-    // Now container holds shared_ptr<Value> to the array at depth n-1
-    // final index:
+
     int finalIdx = ind->back()->execute(env).asInt();
     if (!current.isArray()) throw RuntimeError("Runtime: not an array while assigning at line " + std::to_string(lineno));
     auto &finalVec = (*container).asArray();
     if (finalIdx < 0 || finalIdx >= (int)finalVec.size()) throw RuntimeError("Runtime: array index out of bounds at line " + std::to_string(lineno));
-    // assign into the shared_ptr slot (copy)
     if (!finalVec[finalIdx]) finalVec[finalIdx] = std::make_shared<Value>(val);
     else *finalVec[finalIdx] = val;
 }
 
-// -------------------------------
-// ifNode::execute
-// -------------------------------
 void ifNode::execute(RuntimeEnv &env) {
     if (cond) { 
         bool condv = cond->execute(env).asBool();
         if (condv) {
-            // create a new dynamic scope for the statement block
             RuntimeEnv inner(&env);
             if (stmt) {
                 stmt->execute(inner);
@@ -403,30 +345,22 @@ void ifNode::execute(RuntimeEnv &env) {
             return;
         }
     } else {
-        // else branch condition is absent -> acts as unconditional?
-        // We'll treat null cond as true for 'else' node's stmt invocation
         RuntimeEnv inner(&env);
         if (stmt) stmt->execute(inner);
         return;
     }
-    // tail chain (elif/else)
     if (tail) tail->execute(env);
 }
 
-// -------------------------------
-// stmtNode::execute
-// -------------------------------
 void stmtNode::execute(RuntimeEnv &env) {
     if (stmtType == "vardecl") {
         if (!varType || !varNames) throw RuntimeError("Malformed declaration at line " + std::to_string(lineno));
         for (auto &n : *varNames) {
-            // create default value based on varType
             Value def = createDefaultValue(varType);
             env.setLocal(n, std::make_shared<Value>(def));
         }
     }
     else if (stmtType == "decl") {
-        // function declaration: nothing to execute at runtime
     }
     else if (stmtType == "asgn") {
         if (!lval || !exp) throw RuntimeError("Invalid assignment at line " + std::to_string(lineno));
@@ -435,11 +369,9 @@ void stmtNode::execute(RuntimeEnv &env) {
     }
     else if (stmtType == "pc") {
         if (!exp) throw RuntimeError("Procedure call missing expression at line " + std::to_string(lineno));
-        // execute the call and ignore the returned value
         exp->execute(env);
     }
     else if (stmtType == "exit") {
-        // exit: treat as return from current function with no value (0)
         throw ReturnException(Value(0));
     }
     else if (stmtType == "return") {
@@ -449,14 +381,11 @@ void stmtNode::execute(RuntimeEnv &env) {
     }
     else if (stmtType == "if") {
         if (!ifnode) throw RuntimeError("Malformed if at line " + std::to_string(lineno));
-        // execute ifnode (which will create an inner scope)
         ifnode->execute(env);
     }
     else if (stmtType == "loop") {
-        // stmtBody is the body list (chain via tail)
         try {
             while (true) {
-                // Each iteration we create an inner env to mimic block scoping in loop body
                 RuntimeEnv inner(&env);
                 stmtNode *cur = stmtBody;
                 while (cur) {
@@ -465,53 +394,36 @@ void stmtNode::execute(RuntimeEnv &env) {
                 }
             }
         } catch (const BreakException &) {
-            // break: exit loop normally
         } catch (const ContinueException &) {
-            // continue: continue outer while loop (we simply loop again)
-            // But with this structure we will not catch continue here; handled above
         }
     }
     else if (stmtType == "break") {
-        // ensure we're inside a loop? We cannot easily check here (we could use SymbolTable loopDepth)
         throw BreakException();
     }
     else if (stmtType == "continue") {
         throw ContinueException();
     }
     else if (stmtType == "def") {
-        // nested function def: nothing at runtime (function registered in symbol table already)
-        // Some implementations may register a runtime closure here; we skip.
     }
 
-    // execute tail chain
     if (stmtTail) stmtTail->execute(env);
 }
 
-// -------------------------------
-// fdefNode::execute
-//   When a function definition node appears at runtime we do nothing.
-//   Actual function calls are handled by callUserFunction (which uses symbol table to
-//   find the function body and will create a RuntimeEnv, bind params and execute the body).
-// -------------------------------
 Value fdefNode::execute(RuntimeEnv &env) {
-    // Register the function (in case of recursive or future calls)
     env.registerFunction(head->iden->name, this);
     
-    // Create a local scope for main
     RuntimeEnv localEnv(&env);
 
     try {
         if (body)
             body->execute(localEnv);
     } catch (const ReturnException &r) {
-        return r.val; // handle 'return' in main if present
+        return r.val;
     }
 
-    // For any non-main function definitions, do not execute immediately
     return Value();
 }
 
-// Forward declare Value helpers if not already included:
 static bool isInteger(const Value &v) {
     return v.isInt();
 }
@@ -531,16 +443,13 @@ bool isBuiltin(const std::string &name) {
     return std::find(builtins.begin(), builtins.end(), name) != builtins.end();
 }
 
-/**
- * Execute a built-in function.
- */
 Value callBuiltin(const std::string &name, const std::vector<Value> &args, RuntimeEnv &env) {
     if (name == "writeString") {
         if (args.size() != 1 || !isString(args[0])) {
             throw RuntimeError("writeString expects a single string argument");
         }
         std::cout << args[0].asString();
-        return Value(); // void
+        return Value();
     }
 
     if (name == "writeInteger") {
@@ -571,8 +480,8 @@ Value callBuiltin(const std::string &name, const std::vector<Value> &args, Runti
         if (args.size() != 2 || !isString(args[0]) || !isString(args[1])) {
             throw RuntimeError("strcmp expects two strings");
         }
-        // int result = std::get<std::string>(args[0]).compare(std::get<std::string>(args[1]));
-        // return result;
+        int result = args[0].asString().compare(args[1].asString());
+        return result;
     }
 
     if (name == "strcpy") {
@@ -590,43 +499,45 @@ Value callBuiltin(const std::string &name, const std::vector<Value> &args, Runti
         return static_cast<int>(args[0].asString().size());
     }
 
+    if (name == "strcat") {
+        if (args.size() != 2 || !isString(args[0]) || !isString(args[1])) {
+            throw RuntimeError("strcat expects two strings");
+        }
+        std::string res = args[0].asString() + args[1].asString();
+        return res;
+    }
+
     throw RuntimeError("Unknown built-in function: " + name);
 }
 
-/**
- * Call a user-defined function (lookup in symbol table or runtime environment)
- */
 Value callUserFunction(const std::string &name, const std::vector<Value> &args, RuntimeEnv &env) {
-    // headerNode *hdr = env.getFunctionHeader(name);
-    // if (!hdr) {
-    //     throw RuntimeError("Undefined function: " + name);
-    // }
+    headerNode *hdr = env.getFunctionHeader(name);
+    if (!hdr) {
+        throw RuntimeError("Undefined function: " + name);
+    }
 
-    // // Create a new local scope for the call
-    // RuntimeEnv localEnv(&env);
+    RuntimeEnv localEnv(&env);
 
-    // // Bind parameters
-    // paramNode *param = hdr->params;
-    // size_t argIndex = 0;
-    // while (param) {
-    //     for (const auto &n : *param->names) {
-    //         if (argIndex >= args.size()) {
-    //             throw RuntimeError("Too few arguments to " + name);
-    //         }
-    //         localEnv.setLocal(n, args[argIndex++]);
-    //     }
-    //     param = param->tail;
-    // }
+    paramNode *param = hdr->params;
+    size_t argIndex = 0;
+    while (param) {
+        for (const auto &n : *param->names) {
+            if (argIndex >= args.size()) {
+                throw RuntimeError("Too few arguments to " + name);
+            }
+            localEnv.setLocal(n, std::make_shared<Value>(args[argIndex++]));
+        }
+        param = param->tail;
+    }
 
-    // // Execute body
-    // try {
-    //     hdr->iden->execute(localEnv);  // if header has initialization or pre-body code
-    //     if (fdefNode *def = env.getFunctionDef(name)) {
-    //         def->body->execute(localEnv);
-    //     }
-    // } catch (const ReturnException &r) {
-    //     return r.val;
-    // }
+    try {
+        hdr->iden->execute(localEnv);
+        if (fdefNode *def = env.getFunctionDef(name)) {
+            def->body->execute(localEnv);
+        }
+    } catch (const ReturnException &r) {
+        return r.val;
+    }
 
-    return Value(); // void if no return
+    return Value();
 }
