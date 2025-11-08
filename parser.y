@@ -322,11 +322,11 @@ int main() {
             if (result == 0 && startFunc != NULL) {
                   /* std::cout << *startFunc << std::endl; */
                   startFunc->semanticCheck(st);
-                  /* std::cout << GREEN "No semantic errors found." RESET "\n"; */
             }
       } catch (const SemanticError &e) {
             fprintf(stderr, RED "Semantic Error at line %d:" RESET " %s\n" RESET, e.line, e.what());
-            result = 1;
+            free(indent_stack);
+            return 1;
       }
 
       try {
