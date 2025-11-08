@@ -100,7 +100,7 @@ fdefNode *startFunc;
 %%
 
 program
-      : func_def                                                                                      { /*std::cout << "AST:\n" << *($1) << std::endl;*/ $$ = $1; startFunc = $1; }
+      : func_def                                                                                      { $$ = $1; startFunc = $1; }
       ;
 
 func_def
@@ -316,16 +316,25 @@ int main() {
 
       submitBuiltInFunctions(st);
       int result = yyparse();
+      RuntimeEnv globalEnv(nullptr);
 
       try {
             if (result == 0 && startFunc != NULL) {
+                  /* std::cout << *startFunc << std::endl; */
                   startFunc->semanticCheck(st);
-                  std::cout << GREEN "No semantic errors found." RESET "\n";
+                  /* std::cout << GREEN "No semantic errors found." RESET "\n"; */
             }
       } catch (const SemanticError &e) {
-            fprintf(stderr, RED "Error at line %d:" RESET " %s\n" RESET, e.line, e.what());
+            fprintf(stderr, RED "Semantic Error at line %d:" RESET " %s\n" RESET, e.line, e.what());
             result = 1;
       }
+
+      try {
+            startFunc->execute(globalEnv);
+      } catch (std::runtime_error& e) {
+            fprintf(stderr, RED "%s\n" RESET, e.what());
+      }
+
       free(indent_stack);
       return result;
 }

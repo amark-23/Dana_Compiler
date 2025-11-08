@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include "symbol.hpp"
+#include "runtime.hpp"
 
 extern int yylineno;
 
@@ -40,6 +41,7 @@ class Id : public Node {
         Id(std::string s);
         std::string name;
         void printNode(std::ostream &out) const override;
+        Value execute(RuntimeEnv &env);
 };
 
 class Const : public Node {
@@ -47,6 +49,7 @@ class Const : public Node {
         Const(int v);
         int value;
         void printNode(std::ostream &out) const override;
+        Value execute(RuntimeEnv &env);
 };
 
 class paramNode : public Node {
@@ -57,6 +60,7 @@ class paramNode : public Node {
         typeClass *types;
         paramNode *tail;
         void printNode(std::ostream &out) const override;
+        void bindParams(const std::vector<Value> &args, RuntimeEnv &env);
 }; 
 
 class headerNode : public Node {
@@ -66,6 +70,7 @@ class headerNode : public Node {
         paramNode *params;
         Id *iden;
         void printNode(std::ostream &out) const override;
+        Value execute(RuntimeEnv &env);
 };
 
 class exprNode : public Node {
@@ -80,6 +85,7 @@ class exprNode : public Node {
         bool tfFlag;
         void printNode(std::ostream &out) const override;
         typeClass *semanticCheck(SymbolTable &sym);
+        Value execute(RuntimeEnv &env);
 };
 
 class fcallNode : public Node {
@@ -88,6 +94,7 @@ class fcallNode : public Node {
         std::vector<exprNode*> *args;
         Id* iden;
         void printNode(std::ostream &out) const override;
+        Value execute(RuntimeEnv &env);
 };
 
 class lvalNode : public Node {
@@ -98,6 +105,8 @@ class lvalNode : public Node {
         Id *ident;
         void printNode(std::ostream &out) const override;
         typeClass *semanticCheck(SymbolTable &sym);
+        Value execute(RuntimeEnv &env);
+        void assign(RuntimeEnv &env, const Value &val);
 };
 
 class ifNode : public Node {
@@ -107,6 +116,7 @@ class ifNode : public Node {
         exprNode *cond;
         stmtNode *stmt;
         void printNode(std::ostream &out) const override;
+        void execute(RuntimeEnv &env);
 };
 
 class stmtNode : public Node {
@@ -124,6 +134,7 @@ class stmtNode : public Node {
         Id *tag;
         void printNode(std::ostream &out) const override;
         void semanticCheck(SymbolTable &sym);
+        void execute(RuntimeEnv &env);
 };
 
 class fdefNode : public Node {
@@ -133,6 +144,7 @@ class fdefNode : public Node {
         stmtNode *body;
         void printNode(std::ostream &out) const override;
         void semanticCheck(SymbolTable &sym);
+        Value execute(RuntimeEnv &env);
 };
 
 #endif
