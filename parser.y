@@ -72,12 +72,13 @@ fdefNode *startFunc;
 %token T_neq "<>"
 
 %nonassoc "def" "if" "loop" "break" "continue" "return"
-%nonassoc "not" '!'
-%nonassoc '=' "<>" '<' '>' "<=" ">="
-%left '*' '/' '%' '&'
-%left '+' '-' '|'
-%left "and"
+
 %left "or"
+%left "and"
+%nonassoc '=' "<>" '<' '>' "<=" ">="
+%left '+' '-' '|'
+%left '*' '/' '%' '&'
+%right "not" '!'
 
 %type<func> program func_def func_decl
 %type<stmt> stmt stmt_list local_def local_def_list loop
@@ -186,15 +187,15 @@ stmt
       ;
 
 if_stmts
-      : "if" cond ':' local_def_list auto_end "else" ':' local_def_list auto_end                      { $$ = new ifNode($2, $4); auto elseNode = new ifNode(NULL, $8); $$->tail = elseNode; elseNode->tail = NULL; }
-      | "if" cond ':' local_def_list auto_end "elif" cond ':' local_def_list auto_end opt_elif_else   { $$ = new ifNode($2, $4); auto elseNode = new ifNode($7, $9); $$->tail = elseNode; elseNode->tail = $11; }
-      | "if" cond ':' local_def_list auto_end                                                         { $$ = new ifNode($2, $4); $$->tail = NULL; }
+      : "if" cond ':' local_def_list auto_end "else" ':' local_def_list auto_end                      { $$ = new ifNode($2, $4); auto elseNode = new ifNode(NULL, $8); $$->ifTail = elseNode; elseNode->ifTail = NULL; }
+      | "if" cond ':' local_def_list auto_end "elif" cond ':' local_def_list auto_end opt_elif_else   { $$ = new ifNode($2, $4); auto elseNode = new ifNode($7, $9); $$->ifTail = elseNode; elseNode->ifTail = $11; }
+      | "if" cond ':' local_def_list auto_end                                                         { $$ = new ifNode($2, $4); $$->ifTail = NULL; }
       ;
 
 opt_elif_else
       : /* empty */                                                                                   { $$ = NULL; }
-      | "elif" cond ':' local_def_list auto_end opt_elif_else                                         { $$ = new ifNode($2, $4); $$->tail = $6; }
-      | "else" ':' local_def_list auto_end                                                            { $$ = new ifNode(NULL, $3); $$->tail = NULL; }
+      | "elif" cond ':' local_def_list auto_end opt_elif_else                                         { $$ = new ifNode($2, $4); $$->ifTail = $6; }
+      | "else" ':' local_def_list auto_end                                                            { $$ = new ifNode(NULL, $3); $$->ifTail = NULL; }
       ;
 
 loop
@@ -315,26 +316,27 @@ int main() {
       fNames = std::stack<fdefNode*>();
 
       submitBuiltInFunctions(st);
-      int result = yyparse();
       RuntimeEnv globalEnv(nullptr);
 
-      try {
-            if (result == 0 && startFunc != NULL) {
+      if (yyparse() == 0) {
+            try {
                   /* std::cout << *startFunc << std::endl; */
                   startFunc->semanticCheck(st);
+            } catch (const SemanticError &e) {
+                  fprintf(stderr, RED "Semantic Error: %s\n" RESET, e.what());
+                  free(indent_stack);
+                  return 1;
             }
-      } catch (const SemanticError &e) {
-            fprintf(stderr, RED "Semantic Error at line %d:" RESET " %s\n" RESET, e.line, e.what());
-            free(indent_stack);
-            return 1;
-      }
-
-      try {
-            startFunc->execute(globalEnv);
-      } catch (std::runtime_error& e) {
-            fprintf(stderr, RED "%s\n" RESET, e.what());
+            try {
+                  startFunc->execute(globalEnv);
+                  callUserFunction(startFunc->head->iden->name, {}, globalEnv);
+            } catch (const RuntimeError &e) {
+                  fprintf(stderr, RED "%s\n" RESET, e.what());
+                  free(indent_stack);
+                  return 1;
+            }
       }
 
       free(indent_stack);
-      return result;
+      return 0;
 }

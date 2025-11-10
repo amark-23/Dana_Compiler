@@ -112,9 +112,9 @@ class lvalNode : public Node {
 class ifNode : public Node {
     public:
         ifNode(exprNode *e, stmtNode *s);
-        ifNode *tail;
-        exprNode *cond;
-        stmtNode *stmt;
+        ifNode *ifTail;
+        exprNode *ifCond;
+        stmtNode *ifStmtBody;
         void printNode(std::ostream &out) const override;
         void execute(RuntimeEnv &env);
 };

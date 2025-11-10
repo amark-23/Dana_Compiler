@@ -101,18 +101,18 @@ void lvalNode::printNode(std::ostream &out) const {
 }
 
 
-ifNode::ifNode(exprNode *e, stmtNode *s) : Node(), cond(e), stmt(s) {}
+ifNode::ifNode(exprNode *e, stmtNode *s) : Node(), ifCond(e), ifStmtBody(s) {}
 void ifNode::printNode(std::ostream &out) const {
-    auto *statement = stmt;
-    if (tail == nullptr && cond) {
-        out << " else if " << *cond<< " {"; 
+    auto *statement = ifStmtBody;
+    if (ifTail == nullptr && ifCond) {
+        out << " else if " << *ifCond<< " {"; 
         while(statement) {
             out << *statement;
             if (statement->stmtTail) out << ", ";
             statement = statement->stmtTail;
         }
     }
-    else if (tail == nullptr && cond == nullptr) {
+    else if (ifTail == nullptr && ifCond == nullptr) {
         out << " else {";
         while(statement) {
             out << *statement;
@@ -120,8 +120,8 @@ void ifNode::printNode(std::ostream &out) const {
             statement = statement->stmtTail;
         }
     }
-    else if (cond) {
-        out << " else if " << *cond << " {";
+    else if (ifCond) {
+        out << " else if " << *ifCond << " {";
         while(statement) {
             out << *statement;
             if (statement->stmtTail) out << ", ";
@@ -148,18 +148,18 @@ void stmtNode::printNode(std::ostream &out) const {
         if (tag) out << ": " << *tag;
     }
     else if (stmtType == "if") {
-        out << "if " << *ifnode->cond << " {";
-        auto *ifStmt = ifnode->stmt;
+        out << "if " << *ifnode->ifCond << " {";
+        auto *ifStmt = ifnode->ifStmtBody;
         while (ifStmt) {
             out << *ifStmt;
             if (ifStmt->stmtTail) out << ", ";
             ifStmt = ifStmt->stmtTail;
         }
         out << "}";
-        auto *ifTail = ifnode->tail;
+        auto *ifTail = ifnode->ifTail;
         while (ifTail) {
             out << *ifTail;
-            ifTail = ifTail->tail;
+            ifTail = ifTail->ifTail;
         }
     }
     else if (stmtType == "loop") {

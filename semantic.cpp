@@ -30,21 +30,21 @@ void param_semanticCheck(paramNode *node, SymbolTable &sym) {
 
 void if_semanticCheck(ifNode *node, SymbolTable &sym) {
     if (!node) return;
-    if (node->cond) {
-        typeClass *condType = node->cond->semanticCheck(sym);
+    if (node->ifCond) {
+        typeClass *condType = node->ifCond->semanticCheck(sym);
         static basicType boolType(TYPE_BOOL);
         if (!sameType(condType, &boolType)) throw SemanticError("Condition must be of integer (boolean) type " + typeToString(condType->getType()), node->lineno);
     }
 
     sym.enterScope();
-    stmtNode *stmt = node->stmt;
+    stmtNode *stmt = node->ifStmtBody;
     while (stmt) {
         stmt->semanticCheck(sym);
         stmt = stmt->stmtTail;
     }
     sym.exitScope();
 
-    if (node->tail) if_semanticCheck(node->tail, sym);
+    if (node->ifTail) if_semanticCheck(node->ifTail, sym);
 }
 
 typeClass *exprNode::semanticCheck(SymbolTable &sym) {
