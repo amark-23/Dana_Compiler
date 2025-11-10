@@ -6,6 +6,7 @@
 #include <iostream>
 #include <sstream>
 #include <algorithm>
+#include <limits>
 
 headerNode *RuntimeEnv::getFunctionHeader(const std::string &name) {
     fdefNode *fdef = getFunctionDef(name);
@@ -117,23 +118,82 @@ Value exprNode::execute(RuntimeEnv &env) {
         case '+': case '-': case '*': case '/': case '%': {
             if (!leftExpr) {
                 Value rv = rightExpr->execute(env);
-                int r = rv.asInt();
-                if (op == '+') return Value(+r);
-                return Value(-r);
-            } else {
-                int l = leftExpr->execute(env).asInt();
-                int r = rightExpr->execute(env).asInt();
-                switch (op) {
-                    case '+': return Value(l + r);
-                    case '-': return Value(l - r);
-                    case '*': return Value(l * r);
-                    case '/':
-                        if (r == 0) throw RuntimeError("Runtime: division by zero at line " + std::to_string(lineno));
-                        return Value(l / r);
-                    case '%':
-                        if (r == 0) throw RuntimeError("Runtime: modulo by zero at line " + std::to_string(lineno));
-                        return Value(l % r);
+                if (rv.isInt()) {
+                    int r = rv.asInt();
+                    if (op == '+') return Value(+r);
+                    return Value(-r);
                 }
+                if (rv.isChar()) {
+                    char r = rv.asChar(); 
+                    if (op == '+') return Value(+r);
+                    return Value(-r);
+                }
+                throw RuntimeError("Runtime: unary +/- on non-numeric type at line " + std::to_string(lineno));
+            } else {
+                Value lv = leftExpr->execute(env);
+                Value rv = rightExpr->execute(env);
+                if (lv.isInt() && rv.isInt()) {
+                    int l = lv.asInt();
+                    int r = rv.asInt();
+                    switch (op) {
+                        case '+': return Value(l + r);
+                        case '-': return Value(l - r);
+                        case '*': return Value(l * r);
+                        case '/':
+                            if (r == 0) throw RuntimeError("Runtime: division by zero at line " + std::to_string(lineno));
+                            return Value(l / r);
+                        case '%':
+                            if (r == 0) throw RuntimeError("Runtime: modulo by zero at line " + std::to_string(lineno));
+                            return Value(l % r);
+                    }
+                }
+                if (lv.isChar() && rv.isChar()) {
+                    char l = lv.asChar();
+                    char r = rv.asChar();
+                    switch (op) {
+                        case '+': return Value(static_cast<char>(l + r));
+                        case '-': return Value(static_cast<char>(l - r));
+                        case '*': return Value(static_cast<char>(l * r));
+                        case '/':
+                            if (r == 0) throw RuntimeError("Runtime: division by zero at line " + std::to_string(lineno));
+                            return Value(static_cast<char>(l / r));
+                        case '%':
+                            if (r == 0) throw RuntimeError("Runtime: modulo by zero at line " + std::to_string(lineno));
+                            return Value(static_cast<char>(l % r));
+                    }
+                }
+                if (lv.isInt() && rv.isChar()) {
+                    int l = lv.asInt();
+                    int r = static_cast<int>(rv.asChar());
+                    switch (op) {
+                        case '+': return Value(l + r);
+                        case '-': return Value(l - r);
+                        case '*': return Value(l * r);
+                        case '/':
+                            if (r == 0) throw RuntimeError("Runtime: division by zero at line " + std::to_string(lineno));
+                            return Value(l / r);
+                        case '%':
+                            if (r == 0) throw RuntimeError("Runtime: modulo by zero at line " + std::to_string(lineno));
+                            return Value(l % r);
+                    }
+                }
+                if (lv.isChar() && rv.isInt()) {
+                    int l = static_cast<int>(lv.asChar());
+                    int r = rv.asInt();
+                    switch (op) {
+                        case '+': return Value(l + r);
+                        case '-': return Value(l - r);
+                        case '*': return Value(l * r);
+                        case '/':
+                            if (r == 0) throw RuntimeError("Runtime: division by zero at line " + std::to_string(lineno));
+                            return Value(l / r);
+                        case '%':
+                            if (r == 0) throw RuntimeError("Runtime: modulo by zero at line " + std::to_string(lineno));
+                            return Value(l % r);
+                    }
+                }
+                
+                throw RuntimeError("Runtime: invalid types for arithmetic operator at line " + std::to_string(lineno));
             }
             break;
         }
@@ -419,10 +479,6 @@ static bool isArray(const Value &v) {
     return v.isArray();
 }
 
-static bool isString(const Value &v) {
-    return v.isString();
-}
-
 static bool isChar(const Value &v) {
     return v.isChar();
 }
@@ -431,7 +487,8 @@ bool isBuiltin(const std::string &name) {
     static const std::vector<std::string> builtins = {
         "writeString", "writeInteger", "writeChar", "writeByte",
         "readString", "readInteger", "readChar", "readByte",
-        "strcmp", "strcpy", "strlen"
+        "strcmp", "strcpy", "strlen", "strcat",
+        "extend", "shrink"
     };
     return std::find(builtins.begin(), builtins.end(), name) != builtins.end();
 }
@@ -439,28 +496,110 @@ bool isBuiltin(const std::string &name) {
 Value callUserFunction(const std::string &name, const std::vector<std::shared_ptr<Value>> &args, RuntimeEnv &env) {
     fdefNode *def = env.getFunctionDef(name);
     if (!def) throw RuntimeError("Undefined function: " + name);
+    RuntimeEnv localEnv(def->definition_env ? def->definition_env : &env); 
     headerNode *hdr = def->head;
-    RuntimeEnv localEnv(&env);
     paramNode *param = hdr->params;
     size_t argIndex = 0;
     while (param) {
+        typeClass* expectedType = param->types; 
+        arrayType* arrType = dynamic_cast<arrayType*>(expectedType);
+        basicType* baseType = arrType ? dynamic_cast<basicType*>(arrType->getBaseType()) : nullptr;
+        bool isExpectedByteArray = arrType && baseType && (baseType->getType() == TYPE_CHAR || baseType->getType() == TYPE_BYTE);
         for (const auto &n : *param->names) {
-            if (argIndex >= args.size()) throw RuntimeError("Too few arguments to " + name);
-            localEnv.setLocal(n, args[argIndex++]);
+            if (argIndex >= args.size()) {
+                throw RuntimeError("Too few arguments to " + name);
+            }
+            const Value& arg = *args[argIndex];
+            if (isExpectedByteArray && arg.isString()) {
+                std::string literal = arg.asString();
+                std::vector<std::shared_ptr<Value>> vec;
+                vec.reserve(literal.length() + 1);
+                for (char c : literal) {
+                    vec.push_back(std::make_shared<Value>(c));
+                }
+                vec.push_back(std::make_shared<Value>('\0'));
+                localEnv.setLocal(n, std::make_shared<Value>(vec));
+            } else {
+                localEnv.setLocal(n, args[argIndex]);
+            }
+            argIndex++;
         }
         param = param->tail;
     }
-    try { if (def->body) def->body->execute(localEnv); } 
+    try { 
+        if (def->body) def->body->execute(localEnv); 
+    } 
     catch (const ReturnException &r) { return r.val; }
     return Value();
 }
 
-Value callBuiltin(const std::string &name, const std::vector<Value> &args, RuntimeEnv &env) {
-    if (name == "writeString") {
-        if (args.size() != 1 || !isString(args[0])) throw RuntimeError("writeString expects a single string argument");
-        std::cout << args[0].asString();
-        return Value();
+static std::string getStringFromValue(const Value &arg) {
+    if (arg.isString()) return arg.asString();
+    if (arg.isArray()) {
+        std::string s = "";
+        const auto& vec = arg.asArray();
+        for (const auto& val_ptr : vec) {
+            if (!val_ptr || (val_ptr->isChar() && val_ptr->asChar() == '\0')) break;
+            s += val_ptr->asChar();
+        }
+        return s;
     }
+    throw RuntimeError("Type error: expected string literal or byte array");
+}
+
+static int getStringLength(const Value &arg) {
+    if (arg.isString()) return static_cast<int>(arg.asString().size());
+    if (arg.isArray()) {
+        const auto& vec = arg.asArray();
+        int len = 0;
+        for (const auto& val_ptr : vec) {
+            if (!val_ptr || (val_ptr->isChar() && val_ptr->asChar() == '\0')) break;
+            len++;
+        }
+        return len;
+    }
+    throw RuntimeError("Type error: expected string literal or byte array for strlen");
+}
+
+static void copyStringToArray(const Value &dest_val, const Value &src_val) {
+    if (!dest_val.isArray()) throw RuntimeError("strcpy target must be a byte array");
+    auto& dest_vec = const_cast<Value&>(dest_val).asArray();
+    std::string src_str = getStringFromValue(src_val);
+    if (dest_vec.empty()) return;
+    size_t len = std::min(src_str.length(), dest_vec.size() - 1);
+    size_t i = 0;
+    for (i = 0; i < len; ++i) {
+        if (!dest_vec[i]) dest_vec[i] = std::make_shared<Value>(' ');
+        *dest_vec[i] = Value(src_str[i]);
+    }
+    if (!dest_vec[i]) dest_vec[i] = std::make_shared<Value>('\0');
+    *dest_vec[i] = Value('\0');
+}
+
+static void concatStringToArray(const Value &dest_val, const Value &src_val) {
+    if (!dest_val.isArray()) throw RuntimeError("strcat target must be a byte array");
+    auto& dest_vec = const_cast<Value&>(dest_val).asArray();
+    if (dest_vec.empty()) return;
+    size_t dest_len = 0;
+    for (dest_len = 0; dest_len < dest_vec.size(); ++dest_len) {
+        if (!dest_vec[dest_len] || (dest_vec[dest_len]->isChar() && dest_vec[dest_len]->asChar() == '\0')) break;
+    }
+    if (dest_len == dest_vec.size())return;
+    std::string src_str = getStringFromValue(src_val);
+    size_t i = 0;
+    size_t max_copy = dest_vec.size() - dest_len - 1;
+    size_t copy_len = std::min(src_str.length(), max_copy);
+
+    for (i = 0; i < copy_len; ++i) {
+        if (!dest_vec[dest_len + i]) dest_vec[dest_len + i] = std::make_shared<Value>(' ');
+        *dest_vec[dest_len + i] = Value(src_str[i]);
+    }
+    if (!dest_vec[dest_len + i]) dest_vec[dest_len + i] = std::make_shared<Value>('\0');
+    *dest_vec[dest_len + i] = Value('\0');
+}
+
+Value callBuiltin(const std::string &name, const std::vector<Value> &args, RuntimeEnv &env) {
+    (void)env;
 
     if (name == "writeInteger") {
         if (args.size() != 1 || !isInteger(args[0])) throw RuntimeError("writeInteger expects a single integer argument");
@@ -469,87 +608,105 @@ Value callBuiltin(const std::string &name, const std::vector<Value> &args, Runti
     }
 
     if (name == "writeChar") {
-        if (args.size() != 1 || !isChar(args[0])) throw RuntimeError("writeChar expects a single integer argument");
+        if (args.size() != 1 || !isChar(args[0])) throw RuntimeError("writeChar expects a single byte/char argument");
         std::cout << args[0].asChar();
         return Value();
     }
 
     if (name == "writeByte") {
-        if (args.size() != 1 || !isChar(args[0])) throw RuntimeError("writeByte expects a single integer argument");
-        std::cout << args[0].asInt();
+        if (args.size() != 1 || !isChar(args[0])) throw RuntimeError("writeByte expects a single byte/char argument");
+        std::cout << static_cast<int>(args[0].asChar());
         return Value();
     }
 
-    if (name == "readString") {
-        if (args.size() != 2 || !isInteger(args[0]) || !isArray(args[1])) throw RuntimeError("readString expects two arguments");
-        // int n_max_size = args[0].asInt();
-        // const auto& s_array = args[1].asArray();
-        // int buffer_capacity = s_array.size();
-
-        // if (buffer_capacity == 0) {
-        //     return Value();
-        // }
-        // int max_chars_to_read = std::min(n_max_size - 1, buffer_capacity - 1);
-        // if (max_chars_to_read < 0) max_chars_to_read = 0;
-
-        // int i = 0;
-        // char c;
-
-        // for (i = 0; i < max_chars_to_read; ++i) {
-        //     int next_char = std::cin.peek();
-        //     if (next_char == EOF || next_char == '\n') {
-        //         break;
-        //     }
-        //     std::cin.get(c);
-        //     *s_array[i] = Value(c);
-        // }
-
-        // *s_array[i] = Value('\0');
-        // if (std::cin.peek() == '\n') {
-        //     std::cin.get();
-        // }
-        return Value("test");
+    if (name == "writeString") {
+        if (args.size() != 1) throw RuntimeError("writeString expects a single string/array argument");
+        std::cout << getStringFromValue(args[0]);
+        
+        return Value();
     }
 
     if (name == "readInteger") {
-        // int c = 0;
-        // std::cin >> c;
-        return Value(10);
+        int i = 0;
+        std::cin >> i;
+        if (std::cin.fail()) {
+             std::cin.clear();
+             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+             return Value(0); 
+        }
+        return Value(i);
     }
 
     if (name == "readChar") {
-        // char c = '\0';
-        // std::cin >> c;
-        return Value(10);
+        char c = '\0';
+        std::cin.get(c);
+        if (std::cin.eof()) c = '\0';
+        return Value(c);
     }
 
     if (name == "readByte") {
-        // char c = '\0';
-        // std::cin >> c;
-        return Value(10);
+        char c = '\0';
+        std::cin.get(c);
+        if (std::cin.eof()) c = '\0';
+        return Value(c);
     }
 
-    if (name == "strcmp") {
-        if (args.size() != 2 || !isString(args[0]) || !isString(args[1])) throw RuntimeError("strcmp expects two strings");
-        int result = args[0].asString().compare(args[1].asString());
-        return result;
-    }
-
-    if (name == "strcpy") {
-        if (args.size() != 2 || !isString(args[0]) || !isString(args[1])) throw RuntimeError("strcpy expects two strings");
-        std::string dest = args[1].asString();
-        return dest;
+    if (name == "readString") {
+        if (args.size() != 2 || !isInteger(args[0]) || !isArray(args[1])) throw RuntimeError("readString expects (int, byte[]) arguments");
+        int n_max_size = args[0].asInt();
+        auto& s_array = const_cast<Value&>(args[1]).asArray();
+        int buffer_capacity = s_array.size();
+        if (buffer_capacity == 0) return Value();
+        int max_chars_to_read = std::min(n_max_size - 1, buffer_capacity - 1);
+        if (max_chars_to_read < 0) max_chars_to_read = 0;
+        int i = 0;
+        char c;
+        for (i = 0; i < max_chars_to_read; ++i) {
+            int next_char = std::cin.peek();
+            if (next_char == EOF || next_char == '\n') break;
+            std::cin.get(c);
+            *s_array[i] = Value(c);
+        }
+        *s_array[i] = Value('\0');
+        if (std::cin.peek() == '\n') std::cin.get();
+        return Value();
     }
 
     if (name == "strlen") {
-        if (args.size() != 1 || !isString(args[0])) throw RuntimeError("strlen expects one string");
-        return static_cast<int>(args[0].asString().size());
+        if (args.size() != 1) throw RuntimeError("strlen expects one string/array argument");
+        return Value(getStringLength(args[0]));
+    }
+
+    if (name == "strcmp") {
+        if (args.size() != 2) throw RuntimeError("strcmp expects two string/array arguments");
+        std::string s1 = getStringFromValue(args[0]);
+        std::string s2 = getStringFromValue(args[1]);
+        int result = s1.compare(s2);
+        return Value(result);
+    }
+
+    if (name == "strcpy") {
+        if (args.size() != 2) throw RuntimeError("strcpy expects (trg as byte[], src as string/array)");
+        if (!args[0].isArray()) throw RuntimeError("strcpy target must be a byte array");
+        copyStringToArray(args[0], args[1]);
+        return Value();
     }
 
     if (name == "strcat") {
-        if (args.size() != 2 || !isString(args[0]) || !isString(args[1])) throw RuntimeError("strcat expects two strings");
-        std::string res = args[0].asString() + args[1].asString();
-        return res;
+        if (args.size() != 2) throw RuntimeError("strcat expects (trg as byte[], src as string/array)");
+        if (!args[0].isArray()) throw RuntimeError("strcat target must be a byte array");
+        concatStringToArray(args[0], args[1]);
+        return Value();
+    }
+
+    if (name == "extend") {
+        if (args.size() != 1 || !isChar(args[0])) throw RuntimeError("extend expects one byte/char argument");
+        return Value(static_cast<int>(args[0].asChar()));
+    }
+
+    if (name == "shrink") {
+        if (args.size() != 1 || !isInteger(args[0])) throw RuntimeError("shrink expects one integer argument");
+        return Value(static_cast<char>(args[0].asInt() & 0xFF));
     }
 
     throw RuntimeError("Unknown built-in function: " + name);

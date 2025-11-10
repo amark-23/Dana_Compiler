@@ -63,6 +63,7 @@ test-rainy:
 
 clean:
 	$(RM) lexer.cpp parser.cpp parser.hpp parser.output *.o *~
+	$(RM) -r test_results
 
 distclean: clean
 	$(RM) dana

@@ -7,11 +7,13 @@
 #include <vector>
 #include <string>
 #include <stack>
+#include <fstream>
 
 #define RED "\033[1;31m"
 #define GREEN "\033[1;32m"
 #define RESET "\033[0m"
 
+extern FILE* yyin;
 extern int yylineno;
 extern char* yytext;
 extern unsigned int *indent_stack;
@@ -309,7 +311,16 @@ void yyerror(const char *msg) {
     }
 }
 
-int main() {
+int main(int argc, char* argv[]) {
+      if (argc > 1) {
+            // A file was provided as an argument
+            yyin = fopen(argv[1], "r");
+            if (!yyin) {
+                  fprintf(stderr, "Error: Could not open file %s\n", argv[1]);
+                  return 1;
+            }
+      }
+
       stackinit(); 
       SymbolTable st;
       startFunc = NULL;

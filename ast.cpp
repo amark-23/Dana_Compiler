@@ -186,7 +186,7 @@ void stmtNode::printNode(std::ostream &out) const {
 }
 
 
-fdefNode::fdefNode(headerNode *h, stmtNode *b) : Node(), head(h), body(b) {}
+fdefNode::fdefNode(headerNode *h, stmtNode *b) : Node(), head(h), body(b), definition_env(nullptr) {}
 void fdefNode::printNode(std::ostream &out) const {
     out << "FuncDef( " << *(head) << " {\n";
     auto *current = body;

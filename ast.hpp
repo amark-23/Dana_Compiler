@@ -147,6 +147,7 @@ class fdefNode : public Node {
         void printNode(std::ostream &out) const override;
         void semanticCheck(SymbolTable &sym);
         Value execute(RuntimeEnv &env);
+        RuntimeEnv *definition_env;
 };
 
 #endif
