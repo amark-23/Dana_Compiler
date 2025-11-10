@@ -1,9 +1,16 @@
 .PHONY: clean distclean default test
 
+GREEN=\033[0;32m
+RED=\033[0;31m
+YELLOW=\033[0;33m
+NC=\033[0m
+
 CXX=g++
 CXXFLAGS= -Wall
 TEST_DIR= ./compilersNTUA/dana
 DANA_BIN= ./dana
+PYTHON=python3
+TEST_SCRIPT=test_runner.py
 
 default: dana
 
@@ -37,16 +44,11 @@ test:
 		*) echo "Invalid option '$$mode'. Aborting."; exit 1 ;; \
 	esac
 
-test-sunny:
+test-sunny: dana
 	@echo "\n============================"
-	@echo "  Running SUNNY DAY tests"
+	@echo "   Running SUNNY DAY tests"
 	@echo "============================"
-	@for file in $(TEST_DIR)/programs/*.dana; do \
-		if [ -f "$$file" ]; then \
-			echo "\nTesting success: $$file"; \
-			$(DANA_BIN) < "$$file"; \
-		fi \
-	done
+	@$(PYTHON) $(TEST_SCRIPT) $(TEST_DIR)/programs $(DANA_BIN)
 
 test-rainy:
 	@echo "\n============================"

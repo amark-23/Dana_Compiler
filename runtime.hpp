@@ -76,7 +76,9 @@ struct RuntimeEnv {
     void registerFunction(const std::string &name, fdefNode *def) { functions[name] = def; }
     fdefNode *getFunctionDef(const std::string &name) {
         auto it = functions.find(name);
-        return (it != functions.end()) ? it->second : nullptr;
+        if (it != functions.end()) return it->second;
+        if (parent) return parent->getFunctionDef(name);
+        return nullptr;
     }
 
     headerNode *getFunctionHeader(const std::string &name);
@@ -84,7 +86,7 @@ struct RuntimeEnv {
 
 bool isBuiltin(const std::string &name);
 Value callBuiltin(const std::string &name, const std::vector<Value> &args, RuntimeEnv &env);
-Value callUserFunction(const std::string &name, const std::vector<Value> &args, RuntimeEnv &env);
+Value callUserFunction(const std::string &name, const std::vector<std::shared_ptr<Value>> &args, RuntimeEnv &env);
 
 struct RuntimeError : public std::runtime_error { using std::runtime_error::runtime_error; };
 
@@ -93,7 +95,16 @@ struct ReturnException : public RuntimeError {
     explicit ReturnException(const Value &v) : RuntimeError("return"), val(v) {}
 };
 
-struct BreakException : public RuntimeError { BreakException(): RuntimeError("break") {} };
-struct ContinueException : public RuntimeError { ContinueException(): RuntimeError("continue") {} };
+struct BreakException : public RuntimeError {
+    std::string targetName;
+    BreakException() : RuntimeError("break"), targetName("") {}
+    explicit BreakException(const std::string &name) : RuntimeError("break"), targetName(name) {}
+};
+
+struct ContinueException : public RuntimeError {
+    std::string targetName;
+    ContinueException() : RuntimeError("continue"), targetName("") {}
+    explicit ContinueException(const std::string &name) : RuntimeError("continue"), targetName(name) {}
+};
 
 #endif

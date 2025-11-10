@@ -27,9 +27,7 @@ std::string process_escapes(const std::string& raw_str) {
                     result += raw_str[i]; 
                     break;
             }
-        } else {
-            result += raw_str[i];
-        }
+        } else result += raw_str[i];
     }
     return result;
 }
@@ -50,9 +48,7 @@ static Value createDefaultValue(typeClass *t) {
         }
         return Value(vec);
     }
-    if (auto *ref = dynamic_cast<refType*>(t)) {
-        return createDefaultValue(ref->getBaseType());
-    }
+    if (auto *ref = dynamic_cast<refType*>(t)) return createDefaultValue(ref->getBaseType());
     if (auto *b = dynamic_cast<basicType*>(t)) {
         Type ty = b->getType();
         switch (ty) {
@@ -92,6 +88,11 @@ void paramNode::bindParams(const std::vector<Value> &args, RuntimeEnv &env) {
     }
 }
 
+std::shared_ptr<Value> exprNode::getReference(RuntimeEnv &env) {
+    if (op == 'i' && lval) return lval->getReference(env);
+    throw RuntimeError("Runtime: expression is not an l-value, cannot pass as ref at line " + std::to_string(lineno));
+}
+
 Value exprNode::execute(RuntimeEnv &env) {
     switch (op) {
         case 'c': {
@@ -113,7 +114,6 @@ Value exprNode::execute(RuntimeEnv &env) {
             if (!func || !func->iden) throw RuntimeError("Runtime: invalid function call at line " + std::to_string(lineno));
             return func->execute(env);
         }
-
         case '+': case '-': case '*': case '/': case '%': {
             if (!leftExpr) {
                 Value rv = rightExpr->execute(env);
@@ -137,11 +137,9 @@ Value exprNode::execute(RuntimeEnv &env) {
             }
             break;
         }
-
         case '=': case '<': case '>': case 'g': case 'l': case 'd': {
             Value lv = leftExpr ? leftExpr->execute(env) : Value(0);
             Value rv = rightExpr ? rightExpr->execute(env) : Value(0);
-            // std::cout << "int check in every loop: " << lv.asInt() << " == " << rv.asInt() << " = " << (lv.asInt() == rv.asInt()) << std::endl;
             if (lv.isInt() && rv.isInt()) {
                 int li = lv.asInt();
                 int ri = rv.asInt();
@@ -154,7 +152,6 @@ Value exprNode::execute(RuntimeEnv &env) {
                     case 'd': return Value(li != ri);
                 }
             }
-
             if (lv.isChar() && rv.isChar()) {
                 char lc = lv.asChar();
                 char rc = rv.asChar();
@@ -167,7 +164,6 @@ Value exprNode::execute(RuntimeEnv &env) {
                     case 'd': return Value(lc != rc);
                 }
             }
-
             if (lv.isBool() && rv.isBool()) {
                 bool lb = lv.asBool();
                 bool rb = rv.asBool();
@@ -180,7 +176,6 @@ Value exprNode::execute(RuntimeEnv &env) {
                     case 'l': return Value(static_cast<int>(lb) <= static_cast<int>(rb));
                 }
             }
-
             if (lv.isString() && rv.isString()) {
                 std::string ls = lv.asString();
                 std::string rs = rv.asString();
@@ -193,10 +188,8 @@ Value exprNode::execute(RuntimeEnv &env) {
                     case 'l': return Value(ls <= rs);
                 }
             }
-
             throw RuntimeError("Runtime: incompatible types in comparison at line " + std::to_string(lineno));
         }
-
         case 'a': {
             bool l = leftExpr->execute(env).asBool();
             bool r = rightExpr->execute(env).asBool();
@@ -211,7 +204,6 @@ Value exprNode::execute(RuntimeEnv &env) {
             bool r = rightExpr->execute(env).asBool();
             return Value(!r);
         }
-
         case '&': {
             int l = leftExpr->execute(env).asInt();
             int r = rightExpr->execute(env).asInt();
@@ -222,42 +214,74 @@ Value exprNode::execute(RuntimeEnv &env) {
             int r = rightExpr->execute(env).asInt();
             return Value(l | r);
         }
-
         default:
             throw RuntimeError("Runtime: unknown operator in expr at line " + std::to_string(lineno));
     }
-
     throw RuntimeError("Runtime: unreachable code in exprNode::execute");
 }
 
 Value fcallNode::execute(RuntimeEnv &env) {
     if (!iden) throw RuntimeError("Runtime: invalid function identifier at line " + std::to_string(lineno));
     std::string fname = iden->name;
-
-    std::vector<Value> evaluatedArgs;
+    fdefNode *def = env.getFunctionDef(fname);
+    if (!def && !isBuiltin(fname)) throw RuntimeError("Undefined function: " + fname);
+    std::vector<std::shared_ptr<Value>> evaluatedArgs;
     if (args) {
-        for (auto *e : *args) {
-            evaluatedArgs.push_back(e->execute(env));
+        paramNode *currentParam = (def ? def->head->params : nullptr);
+        int paramNameIdx = 0;
+        for (auto *argExpr : *args) {
+            bool isRef = false;
+            if (currentParam) {
+                isRef = currentParam->ref;
+                paramNameIdx++;
+                if (paramNameIdx >= (int)currentParam->names->size()) {
+                    currentParam = currentParam->tail;
+                    paramNameIdx = 0;
+                }
+            }
+            if (isRef) evaluatedArgs.push_back(argExpr->getReference(env));
+            else evaluatedArgs.push_back(std::make_shared<Value>(argExpr->execute(env)));
         }
     }
-
     if (isBuiltin(fname)) {
-        return callBuiltin(fname, evaluatedArgs, env);
+        std::vector<Value> builtinArgs;
+        for (auto &sp : evaluatedArgs) {
+            builtinArgs.push_back(*sp);
+        }
+        return callBuiltin(fname, builtinArgs, env);
     }
-
     return callUserFunction(fname, evaluatedArgs, env);
+}
+
+std::shared_ptr<Value> lvalNode::getReference(RuntimeEnv &env) {
+    if (!ident) throw RuntimeError("Runtime: missing identifier for ref at line " + std::to_string(lineno));
+    auto sp = env.lookup(ident->name);
+    if (!sp) {
+        std::ostringstream ss;
+        ss << "Runtime Error at line " << lineno << ": Undeclared variable '" << ident->name << "'";
+        throw RuntimeError(ss.str());
+    }
+    if (!ind || ind->empty()) return sp;
+    std::shared_ptr<Value> container = sp;
+    Value current = *container;
+    int n = (int)ind->size();
+    for (int i = 0; i < n; ++i) {
+        int idx = ind->at(i)->execute(env).asInt();
+        if (!current.isArray()) throw RuntimeError("Runtime: not an array for ref at line " + std::to_string(lineno));
+        auto &vec = current.asArray();
+        if (idx < 0 || idx >= (int)vec.size()) throw RuntimeError("Runtime: array index out of bounds at line " + std::to_string(lineno));
+        container = vec[idx];
+        if (i < n - 1) current = *container;
+    }
+    return container;
 }
 
 Value lvalNode::execute(RuntimeEnv &env) {
     if (isString) {
         std::string raw_literal = ident->name;
         std::string content = "";
-        
-        if (raw_literal.length() >= 2 && raw_literal.front() == '"' && raw_literal.back() == '"') {
-            content = raw_literal.substr(1, raw_literal.length() - 2);
-        } else {
-             content = raw_literal;
-        }
+        if (raw_literal.length() >= 2 && raw_literal.front() == '"' && raw_literal.back() == '"') content = raw_literal.substr(1, raw_literal.length() - 2);
+        else content = raw_literal;
         content = process_escapes(content);
         return Value(content);
     }
@@ -268,23 +292,13 @@ Value lvalNode::execute(RuntimeEnv &env) {
         ss << "Runtime Error at line " << lineno << ": Undeclared variable '" << ident->name << "'";
         throw RuntimeError(ss.str());
     }
-
-    if (!ind || ind->empty()) {
-        return *sp;
-    }
-
+    if (!ind || ind->empty()) { return *sp; }
     Value current = *sp;
     for (auto *idxExpr : *ind) {
         int idx = idxExpr->execute(env).asInt();
-        // std::cout << "lval execute: " << ident->name << " " << idxExpr->op << " " << idx;
-        if (!current.isArray()) {
-            throw RuntimeError("Runtime: variable '" + ident->name + "' is not an array at line " + std::to_string(lineno));
-        }
+        if (!current.isArray()) throw RuntimeError("Runtime: variable '" + ident->name + "' is not an array at line " + std::to_string(lineno));
         const auto &vec = current.asArray();
-        // std::cout << " <= " << (int)vec.size() << std::endl;
-        if (idx < 0 || idx >= (int)vec.size()) {
-            throw RuntimeError("Runtime: array index out of bounds at line " + std::to_string(lineno));
-        }
+        if (idx < 0 || idx >= (int)vec.size()) throw RuntimeError("Runtime: array index out of bounds at line " + std::to_string(lineno));
         current = *vec[idx];
     }
     return current;
@@ -298,15 +312,12 @@ void lvalNode::assign(RuntimeEnv &env, const Value &val) {
         ss << "Runtime Error at line " << lineno << ": Undeclared variable '" << ident->name << "'";
         throw RuntimeError(ss.str());
     }
-
     if (!ind || ind->empty()) {
         *sp = val;
         return;
     }
-
     std::shared_ptr<Value> container = sp;
     Value current = *container;
-
     int n = (int)ind->size();
     for (int i = 0; i < n - 1; ++i) {
         int idx = ind->at(i)->execute(env).asInt();
@@ -316,7 +327,6 @@ void lvalNode::assign(RuntimeEnv &env, const Value &val) {
         container = vec[idx];
         current = *container;
     }
-
     int finalIdx = ind->back()->execute(env).asInt();
     if (!current.isArray()) throw RuntimeError("Runtime: not an array while assigning at line " + std::to_string(lineno));
     auto &finalVec = (*container).asArray();
@@ -330,20 +340,14 @@ void ifNode::execute(RuntimeEnv &env) {
         bool condv = ifCond->execute(env).asBool();
         if (condv) {
             RuntimeEnv inner(&env);
-            if (ifStmtBody) {
-                ifStmtBody->execute(inner);
-            }
+            if (ifStmtBody) ifStmtBody->execute(inner);
         } else {
-            if (ifTail) {
-                ifTail->execute(env);
-            }
+            if (ifTail) ifTail->execute(env);
         }
     }
     else {
         RuntimeEnv inner(&env);
-        if (ifStmtBody) {
-            ifStmtBody->execute(inner);
-        }
+        if (ifStmtBody) ifStmtBody->execute(inner);
     }
 }
 
@@ -355,8 +359,7 @@ void stmtNode::execute(RuntimeEnv &env) {
             env.setLocal(n, std::make_shared<Value>(def));
         }
     }
-    else if (stmtType == "decl") {
-    }
+    else if (stmtType == "decl") {}
     else if (stmtType == "asgn") {
         if (!lval || !exp) throw RuntimeError("Invalid assignment at line " + std::to_string(lineno));
         Value rv = exp->execute(env);
@@ -366,9 +369,7 @@ void stmtNode::execute(RuntimeEnv &env) {
         if (!exp) throw RuntimeError("Procedure call missing expression at line " + std::to_string(lineno));
         exp->execute(env);
     }
-    else if (stmtType == "exit") {
-        throw ReturnException(Value(0));
-    }
+    else if (stmtType == "exit") { throw ReturnException(Value(0)); }
     else if (stmtType == "return") {
         Value rv = Value(0);
         if (exp) rv = exp->execute(env);
@@ -379,55 +380,35 @@ void stmtNode::execute(RuntimeEnv &env) {
         ifnode->execute(env);
     }
     else if (stmtType == "loop") {
+        std::string loopName = (this->tag ? this->tag->name : "");
         try {
             while (true) {
                 try {
                     if (this->stmtBody) this->stmtBody->execute(env);
-                } catch (const ContinueException &) { continue; }
+                } catch (const ContinueException &e) { 
+                    if (e.targetName == "" || e.targetName == loopName) { continue; }
+                    else { throw; }
+                }
             }
-        } catch (const BreakException &) {}
+        } catch (const BreakException &e) {
+            if (e.targetName == "" || e.targetName == loopName) {}
+            else { throw; }
+        }
     }
     else if (stmtType == "break") {
-        throw BreakException();
+        if (tag) throw BreakException(tag->name);
+        else throw BreakException();
     }
     else if (stmtType == "continue") {
-        throw ContinueException();
+        if (tag) throw ContinueException(tag->name);
+        else throw ContinueException();
     }
-    else if (stmtType == "def") {
-        env.registerFunction(funcDef->head->iden->name, funcDef);
-    }
-
+    else if (stmtType == "def") { env.registerFunction(funcDef->head->iden->name, funcDef); }
     if (this->stmtTail) this->stmtTail->execute(env);
 }
 
 Value fdefNode::execute(RuntimeEnv &env) {
     env.registerFunction(head->iden->name, this);
-    return Value();
-}
-
-Value callUserFunction(const std::string &name, const std::vector<Value> &args, RuntimeEnv &env) {
-    fdefNode *def = env.getFunctionDef(name);
-    if (!def) throw RuntimeError("Undefined function: " + name);
-
-    headerNode *hdr = def->head;
-    RuntimeEnv localEnv(&env);
-
-    paramNode *param = hdr->params;
-    size_t argIndex = 0;
-    while (param) {
-        for (const auto &n : *param->names) {
-            if (argIndex >= args.size()) throw RuntimeError("Too few arguments to " + name);
-            localEnv.setLocal(n, std::make_shared<Value>(args[argIndex++]));
-        }
-        param = param->tail;
-    }
-
-    try {
-        if (def->body) def->body->execute(localEnv);
-    } catch (const ReturnException &r) {
-        return r.val;
-    }
-
     return Value();
 }
 
@@ -455,43 +436,52 @@ bool isBuiltin(const std::string &name) {
     return std::find(builtins.begin(), builtins.end(), name) != builtins.end();
 }
 
+Value callUserFunction(const std::string &name, const std::vector<std::shared_ptr<Value>> &args, RuntimeEnv &env) {
+    fdefNode *def = env.getFunctionDef(name);
+    if (!def) throw RuntimeError("Undefined function: " + name);
+    headerNode *hdr = def->head;
+    RuntimeEnv localEnv(&env);
+    paramNode *param = hdr->params;
+    size_t argIndex = 0;
+    while (param) {
+        for (const auto &n : *param->names) {
+            if (argIndex >= args.size()) throw RuntimeError("Too few arguments to " + name);
+            localEnv.setLocal(n, args[argIndex++]);
+        }
+        param = param->tail;
+    }
+    try { if (def->body) def->body->execute(localEnv); } 
+    catch (const ReturnException &r) { return r.val; }
+    return Value();
+}
+
 Value callBuiltin(const std::string &name, const std::vector<Value> &args, RuntimeEnv &env) {
     if (name == "writeString") {
-        if (args.size() != 1 || !isString(args[0])) {
-            throw RuntimeError("writeString expects a single string argument");
-        }
+        if (args.size() != 1 || !isString(args[0])) throw RuntimeError("writeString expects a single string argument");
         std::cout << args[0].asString();
         return Value();
     }
 
     if (name == "writeInteger") {
-        if (args.size() != 1 || !isInteger(args[0])) {
-            throw RuntimeError("writeInteger expects a single integer argument");
-        }
+        if (args.size() != 1 || !isInteger(args[0])) throw RuntimeError("writeInteger expects a single integer argument");
         std::cout << args[0].asInt();
         return Value();
     }
 
     if (name == "writeChar") {
-        if (args.size() != 1 || !isChar(args[0])) {
-            throw RuntimeError("writeChar expects a single integer argument");
-        }
+        if (args.size() != 1 || !isChar(args[0])) throw RuntimeError("writeChar expects a single integer argument");
         std::cout << args[0].asChar();
         return Value();
     }
 
     if (name == "writeByte") {
-        if (args.size() != 1 || !isChar(args[0])) {
-            throw RuntimeError("writeByte expects a single integer argument");
-        }
+        if (args.size() != 1 || !isChar(args[0])) throw RuntimeError("writeByte expects a single integer argument");
         std::cout << args[0].asInt();
         return Value();
     }
 
     if (name == "readString") {
-        if (args.size() != 2 || !isInteger(args[0]) || !isArray(args[1])) {
-            throw RuntimeError("readString expects two arguments");
-        }
+        if (args.size() != 2 || !isInteger(args[0]) || !isArray(args[1])) throw RuntimeError("readString expects two arguments");
         // int n_max_size = args[0].asInt();
         // const auto& s_array = args[1].asArray();
         // int buffer_capacity = s_array.size();
@@ -540,32 +530,24 @@ Value callBuiltin(const std::string &name, const std::vector<Value> &args, Runti
     }
 
     if (name == "strcmp") {
-        if (args.size() != 2 || !isString(args[0]) || !isString(args[1])) {
-            throw RuntimeError("strcmp expects two strings");
-        }
+        if (args.size() != 2 || !isString(args[0]) || !isString(args[1])) throw RuntimeError("strcmp expects two strings");
         int result = args[0].asString().compare(args[1].asString());
         return result;
     }
 
     if (name == "strcpy") {
-        if (args.size() != 2 || !isString(args[0]) || !isString(args[1])) {
-            throw RuntimeError("strcpy expects two strings");
-        }
+        if (args.size() != 2 || !isString(args[0]) || !isString(args[1])) throw RuntimeError("strcpy expects two strings");
         std::string dest = args[1].asString();
         return dest;
     }
 
     if (name == "strlen") {
-        if (args.size() != 1 || !isString(args[0])) {
-            throw RuntimeError("strlen expects one string");
-        }
+        if (args.size() != 1 || !isString(args[0])) throw RuntimeError("strlen expects one string");
         return static_cast<int>(args[0].asString().size());
     }
 
     if (name == "strcat") {
-        if (args.size() != 2 || !isString(args[0]) || !isString(args[1])) {
-            throw RuntimeError("strcat expects two strings");
-        }
+        if (args.size() != 2 || !isString(args[0]) || !isString(args[1])) throw RuntimeError("strcat expects two strings");
         std::string res = args[0].asString() + args[1].asString();
         return res;
     }

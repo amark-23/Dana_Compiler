@@ -86,6 +86,7 @@ class exprNode : public Node {
         void printNode(std::ostream &out) const override;
         typeClass *semanticCheck(SymbolTable &sym);
         Value execute(RuntimeEnv &env);
+        std::shared_ptr<Value> getReference(RuntimeEnv &env);
 };
 
 class fcallNode : public Node {
@@ -107,6 +108,7 @@ class lvalNode : public Node {
         typeClass *semanticCheck(SymbolTable &sym);
         Value execute(RuntimeEnv &env);
         void assign(RuntimeEnv &env, const Value &val);
+        std::shared_ptr<Value> getReference(RuntimeEnv &env);
 };
 
 class ifNode : public Node {
