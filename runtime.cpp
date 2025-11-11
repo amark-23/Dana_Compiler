@@ -8,6 +8,8 @@
 #include <algorithm>
 #include <limits>
 
+static Value createDefaultValue(typeClass *t);
+
 headerNode *RuntimeEnv::getFunctionHeader(const std::string &name) {
     fdefNode *fdef = getFunctionDef(name);
     if (!fdef) return nullptr;
@@ -33,21 +35,50 @@ std::string process_escapes(const std::string& raw_str) {
     return result;
 }
 
+static Value build_recursive_array(typeClass *base, const std::vector<int>& dims, int depth) {
+    if (depth == (int)dims.size()) {
+        if (auto *ref = dynamic_cast<refType*>(base)) return createDefaultValue(ref->getBaseType());
+        if (auto *b = dynamic_cast<basicType*>(base)) {
+            Type ty = b->getType();
+            switch (ty) {
+                case TYPE_INT:  return Value(0);
+                case TYPE_CHAR: return Value(static_cast<char>(0));
+                case TYPE_BYTE: return Value(static_cast<char>(0));
+                case TYPE_BOOL: return Value(false);
+                case TYPE_VOID: return Value(0);
+                default: return Value(0);
+            }
+        }
+        return Value(0); 
+    }
+    int n = dims[depth];
+    if (n < 0) n = 0;
+    std::vector<std::shared_ptr<Value>> vec;
+    vec.reserve(n);
+    for (int i = 0; i < n; ++i) {
+        Value el = build_recursive_array(base, dims, depth + 1);
+        vec.push_back(std::make_shared<Value>(el));
+    }
+    return Value(vec);
+}
+
 static Value createDefaultValue(typeClass *t) {
     if (!t) return Value(0);
-    if (auto *arr = dynamic_cast<arrayType*>(t)) {
-        Const *sz = arr->getSize();
-        int n = 0;
-        if (sz) n = sz->value;
-        if (n < 0) n = 0;
-        std::vector<std::shared_ptr<Value>> vec;
-        vec.reserve(n);
-        typeClass *base = arr->getBaseType();
-        for (int i = 0; i < n; ++i) {
-            Value el = createDefaultValue(base);
-            vec.push_back(std::make_shared<Value>(el));
+    if (dynamic_cast<arrayType*>(t)) {
+        std::vector<int> dimensions;
+        typeClass* finalBase = t;
+        typeClass* current = t;
+        while (auto* current_arr = dynamic_cast<arrayType*>(current)) {
+            Const *sz = current_arr->getSize();
+            int n = 0;
+            if (sz) n = sz->value;
+            dimensions.push_back(n); 
+            
+            finalBase = current_arr->getBaseType();
+            current = finalBase;
         }
-        return Value(vec);
+        std::reverse(dimensions.begin(), dimensions.end());
+        return build_recursive_array(finalBase, dimensions, 0);
     }
     if (auto *ref = dynamic_cast<refType*>(t)) return createDefaultValue(ref->getBaseType());
     if (auto *b = dynamic_cast<basicType*>(t)) {
@@ -252,13 +283,13 @@ Value exprNode::execute(RuntimeEnv &env) {
         }
         case 'a': {
             bool l = leftExpr->execute(env).asBool();
-            bool r = rightExpr->execute(env).asBool();
-            return Value(l && r);
+            if (!l) return Value(false);
+            return Value(rightExpr->execute(env).asBool()); 
         }
         case 'o': {
             bool l = leftExpr->execute(env).asBool();
-            bool r = rightExpr->execute(env).asBool();
-            return Value(l || r);
+            if (l) return Value(true);
+            return Value(rightExpr->execute(env).asBool());
         }
         case 'n': {
             bool r = rightExpr->execute(env).asBool();

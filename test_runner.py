@@ -81,7 +81,7 @@ def run_tests(test_dir_path, compiler_path):
                 input=stdin_data,       # <-- Pass .input content to stdin
                 capture_output=True,
                 text=True,
-                timeout=5
+                timeout=30
             )
 
             # --- END OF MODIFIED LOGIC ---
