@@ -3,6 +3,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include "llvm/IR/Value.h"
 #include "symbol.hpp"
 #include "runtime.hpp"
 
@@ -23,12 +24,15 @@ class typeClass;
 
 class SymbolTable;
 
+class CodegenContext;
+
 class Node {
     public:
         int lineno;
         Node() : lineno(yylineno) {}
         Node(int ln) : lineno(ln) {}
         virtual void printNode(std::ostream &out) const = 0;
+        virtual llvm::Value* codegen(CodegenContext& context) = 0;
 };
 
 inline std::ostream &operator<<(std::ostream &out, const Node &ast) {
@@ -42,6 +46,7 @@ class Id : public Node {
         std::string name;
         void printNode(std::ostream &out) const override;
         Value execute(RuntimeEnv &env);
+        llvm::Value* codegen(CodegenContext& context);
 };
 
 class Const : public Node {
@@ -50,6 +55,7 @@ class Const : public Node {
         int value;
         void printNode(std::ostream &out) const override;
         Value execute(RuntimeEnv &env);
+        llvm::Value* codegen(CodegenContext& context);
 };
 
 class paramNode : public Node {
@@ -61,6 +67,7 @@ class paramNode : public Node {
         paramNode *tail;
         void printNode(std::ostream &out) const override;
         void bindParams(const std::vector<Value> &args, RuntimeEnv &env);
+        llvm::Value* codegen(CodegenContext& context);
 }; 
 
 class headerNode : public Node {
@@ -71,6 +78,7 @@ class headerNode : public Node {
         Id *iden;
         void printNode(std::ostream &out) const override;
         Value execute(RuntimeEnv &env);
+        llvm::Value* codegen(CodegenContext& context);
 };
 
 class exprNode : public Node {
@@ -87,6 +95,7 @@ class exprNode : public Node {
         typeClass *semanticCheck(SymbolTable &sym);
         Value execute(RuntimeEnv &env);
         std::shared_ptr<Value> getReference(RuntimeEnv &env);
+        llvm::Value* codegen(CodegenContext& context);
 };
 
 class fcallNode : public Node {
@@ -96,6 +105,7 @@ class fcallNode : public Node {
         Id* iden;
         void printNode(std::ostream &out) const override;
         Value execute(RuntimeEnv &env);
+        llvm::Value* codegen(CodegenContext& context);
 };
 
 class lvalNode : public Node {
@@ -109,6 +119,9 @@ class lvalNode : public Node {
         Value execute(RuntimeEnv &env);
         void assign(RuntimeEnv &env, const Value &val);
         std::shared_ptr<Value> getReference(RuntimeEnv &env);
+        llvm::Value* codegen(CodegenContext& context);
+        virtual llvm::Value* codegen_ptr(CodegenContext& context);
+        virtual llvm::Type* getType(CodegenContext& context);
 };
 
 class ifNode : public Node {
@@ -119,6 +132,7 @@ class ifNode : public Node {
         stmtNode *ifStmtBody;
         void printNode(std::ostream &out) const override;
         void execute(RuntimeEnv &env);
+        llvm::Value* codegen(CodegenContext& context);
 };
 
 class stmtNode : public Node {
@@ -137,6 +151,7 @@ class stmtNode : public Node {
         void printNode(std::ostream &out) const override;
         void semanticCheck(SymbolTable &sym);
         void execute(RuntimeEnv &env);
+        llvm::Value* codegen(CodegenContext& context);
 };
 
 class fdefNode : public Node {
@@ -148,6 +163,7 @@ class fdefNode : public Node {
         void semanticCheck(SymbolTable &sym);
         Value execute(RuntimeEnv &env);
         RuntimeEnv *definition_env;
+        llvm::Value* codegen(CodegenContext& context);
 };
 
 #endif

@@ -1,6 +1,8 @@
 %{
 #include "ast.hpp"
 #include "lexer.hpp"
+#include "codegen.hpp"
+#include "llvm/IR/Verifier.h"
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
@@ -313,22 +315,18 @@ void yyerror(const char *msg) {
 
 int main(int argc, char* argv[]) {
       if (argc > 1) {
-            // A file was provided as an argument
             yyin = fopen(argv[1], "r");
             if (!yyin) {
                   fprintf(stderr, "Error: Could not open file %s\n", argv[1]);
                   return 1;
             }
       }
-
       stackinit(); 
       SymbolTable st;
       startFunc = NULL;
       fNames = std::stack<fdefNode*>();
-
       submitBuiltInFunctions(st);
-      RuntimeEnv globalEnv(nullptr);
-
+      // RuntimeEnv globalEnv(nullptr); // REMOVE COMMENT IF YOU WANT TO RUN AS INTERPRETER 
       if (yyparse() == 0) {
             try {
                   /* std::cout << *startFunc << std::endl; */
@@ -338,16 +336,27 @@ int main(int argc, char* argv[]) {
                   free(indent_stack);
                   return 1;
             }
-            try {
+            // EXECUTION AS INTERPRETER
+            /* try {
                   startFunc->execute(globalEnv);
                   callUserFunction(startFunc->head->iden->name, {}, globalEnv);
             } catch (const RuntimeError &e) {
                   fprintf(stderr, RED "%s\n" RESET, e.what());
                   free(indent_stack);
                   return 1;
+            } */
+            // EXECUTION AS COMPILER WITH LLVM
+            try {
+                  CodegenContext context;
+                  context.generate(startFunc);
+                  llvm::verifyModule(*context.TheModule, &llvm::errs());
+                  context.TheModule->print(llvm::errs(), nullptr);
+            } catch (const std::exception &e) {
+                  fprintf(stderr, RED "Codegen Error: %s\n" RESET, e.what());
+                  free(indent_stack);
+                  return 1;
             }
       }
-
       free(indent_stack);
       return 0;
 }
