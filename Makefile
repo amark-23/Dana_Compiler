@@ -1,4 +1,4 @@
-.PHONY: clean distclean default test test-sunny test-rainy
+.PHONY: clean distclean default
 
 GREEN=\033[0;32m
 RED=\033[0;31m
@@ -9,33 +9,35 @@ CXX=g++
 LLVM_CXXFLAGS = $(shell llvm-config --cxxflags)
 FILTERED_LLVM_CXXFLAGS = $(filter-out -fno-exceptions, $(LLVM_CXXFLAGS))
 CXXFLAGS = -Wall -std=c++17 $(FILTERED_LLVM_CXXFLAGS)
-LDFLAGS = $(shell llvm-config --ldflags)
-LIBS = $(shell llvm-config --libs --system-libs) -lfl
+LIBS = $(shell llvm-config --libs --system-libs all) -lfl
+EXEC_NAME = dana
+OBJS = lexer.o parser.o ast.o symbol.o semantic.o codegen.o
+RUNTIME_LIB = runtime_lib.o
+PYTHON_CORRECT_FILE = ./compilersNTUA/tests/test-correct.py
+PYTHON_ERRONEOUS_FILE = ./compilersNTUA/tests/test-erroneous.py
+TEST_CORRECT_DIR = ./compilersNTUA/dana/programs/
+TEST_ERRONEOUS_DIR = ./compilersNTUA/dana/programs-erroneous/
 
-TEST_DIR= ./compilersNTUA/dana
-DANA_BIN= ./dana
-PYTHON=python3
-TEST_SCRIPT=test_runner.py
+default: $(EXEC_NAME) $(RUNTIME_LIB)
 
-OBJS = lexer.o parser.o ast.o symbol.o semantic.o runtime.o codegen.o
+$(EXEC_NAME): $(OBJS)
+	@echo "$(GREEN)Linking executable: $(EXEC_NAME)...$(NC)"
+	$(CXX) $(CXXFLAGS) -o $(EXEC_NAME) $(OBJS) $(LDFLAGS) $(LIBS)
 
-default: dana
-
-dana: $(OBJS)
-	@echo "$(GREEN)Linking executable: dana...$(NC)"
-	$(CXX) $(CXXFLAGS) -o dana $(OBJS) $(LDFLAGS) $(LIBS)
+$(RUNTIME_LIB): runtime_lib.cpp
+	@echo "$(YELLOW)Compiling runtime library: $<...$(NC)"
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 %.o: %.cpp
 	@echo "$(YELLOW)Compiling: $<...$(NC)"
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-lexer.o: lexer.cpp parser.hpp ast.hpp runtime.hpp
-parser.o: parser.cpp parser.hpp ast.hpp symbol.hpp
+lexer.o: lexer.cpp parser.hpp ast.hpp codegen.hpp
+parser.o: parser.cpp parser.hpp ast.hpp symbol.hpp codegen.hpp
 ast.o: ast.cpp ast.hpp symbol.hpp
 symbol.o: symbol.cpp symbol.hpp ast.hpp
 semantic.o: semantic.cpp ast.hpp symbol.hpp
-runtime.o: runtime.cpp runtime.hpp ast.hpp symbol.hpp
-codegen.o: codegen.cpp codegen.hpp ast.hpp symbol.hpp
+codegen.o: codegen.cpp codegen.hpp ast.hpp symbol.hpp 
 
 lexer.cpp: lexer.l ast.hpp
 	@echo "Running Flex..."
@@ -44,6 +46,15 @@ lexer.cpp: lexer.l ast.hpp
 parser.hpp parser.cpp: parser.y ast.hpp
 	@echo "Running Bison..."
 	bison -dv -o parser.cpp parser.y
+
+clean:
+	@echo "Cleaning up object files and generated sources..."
+	$(RM) lexer.cpp parser.cpp parser.hpp parser.output *.o *~
+	$(RM) -r test_results
+
+distclean: clean
+	@echo "Cleaning up executable..."
+	$(RM) $(EXEC_NAME)
 
 test:
 	@echo "\nWhich test mode do you want to run?"
@@ -63,23 +74,10 @@ test-sunny: dana
 	@echo "\n============================"
 	@echo " 	Running SUNNY DAY tests"
 	@echo "============================"
-	@$(PYTHON) $(TEST_SCRIPT) $(TEST_DIR)/programs $(DANA_BIN)
+	@$(PYTHON) $(PYTHON_CORRECT_FILE) dana ./dana $(TEST_CORRECT_DIR)
 
 test-rainy:
 	@echo "\n============================"
 	@echo " 	Running RAINY DAY tests"
 	@echo "============================"
-	@for file in $(TEST_DIR)/programs-erroneous/*.dana; do \
-		if [ -f "$$file" ]; then \
-			echo "\nTesting erroneous: $$file"; \
-			$(DANA_BIN) < "$$file"; \
-		fi \
-	done
-
-clean:
-	@echo "Cleaning up..."
-	$(RM) lexer.cpp parser.cpp parser.hpp parser.output *.o *~
-	$(RM) -r test_results
-
-distclean: clean
-	$(RM) dana
+	@$(PYTHON) $(PYTHON_ERRONEOUS_FILE) dana ./dana $(TEST_ERRONEOUS_DIR)

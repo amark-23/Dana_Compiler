@@ -2,6 +2,7 @@
 #include "ast.hpp"
 #include "lexer.hpp"
 #include "codegen.hpp"
+#include "llvm/Support/raw_ostream.h"
 #include "llvm/IR/Verifier.h"
 #include <cstdio>
 #include <cstring>
@@ -313,50 +314,125 @@ void yyerror(const char *msg) {
     }
 }
 
+std::string getBaseFilename(const std::string& path) {
+    size_t last_slash = path.find_last_of("/\\");
+    std::string filename = (last_slash == std::string::npos) ? path : path.substr(last_slash + 1);
+    
+    size_t last_dot = filename.find_last_of('.');
+    if (last_dot == std::string::npos) return filename;
+    return filename.substr(0, last_dot);
+}
+
+std::string getDirectory(const std::string& path) {
+    size_t last_slash = path.find_last_of("/\\");
+    if (last_slash == std::string::npos) return ".";
+    return path.substr(0, last_slash);
+}
+
+
 int main(int argc, char* argv[]) {
-      if (argc > 1) {
-            yyin = fopen(argv[1], "r");
-            if (!yyin) {
-                  fprintf(stderr, "Error: Could not open file %s\n", argv[1]);
-                  return 1;
+    std::string inputFile = "";
+    std::string outputFile = "./a.out";
+    bool mode_f = false; // -f (Final to stdout)
+    bool mode_i = false; // -i (Intermediate to stdout)
+    bool optimize = false; // -O (Optimazation flag)
+    for (int i = 1; i < argc; ++i) {
+        std::string arg = argv[i];
+        if (arg == "-o") {
+            if (i + 1 < argc) {
+                outputFile = argv[++i];
+            } else {
+                fprintf(stderr, RED "Error:" RESET " -o requires a filename.\n");
+                return 1;
             }
-      }
-      stackinit(); 
-      SymbolTable st;
-      startFunc = NULL;
-      fNames = std::stack<fdefNode*>();
-      submitBuiltInFunctions(st);
-      // RuntimeEnv globalEnv(nullptr); // REMOVE COMMENT IF YOU WANT TO RUN AS INTERPRETER 
-      if (yyparse() == 0) {
-            try {
-                  /* std::cout << *startFunc << std::endl; */
-                  startFunc->semanticCheck(st);
-            } catch (const SemanticError &e) {
-                  fprintf(stderr, RED "Semantic Error: %s\n" RESET, e.what());
-                  free(indent_stack);
-                  return 1;
+        } else if (arg == "-f") {
+            mode_i = false;
+            mode_f = true;
+        } else if (arg == "-i") {
+            mode_f = false;
+            mode_i = true;
+        } else if (arg == "-O") {
+            optimize = true; 
+        } else if (arg.rfind('-', 0) == 0) {
+            fprintf(stderr, RED "Error:" RESET " Unknown flag: %s\n", arg.c_str());
+            return 1;
+        } else {
+            if (inputFile != "") {
+                fprintf(stderr, RED "Error:" RESET " Multiple input files specified.\n");
+                return 1;
             }
-            // EXECUTION AS INTERPRETER
-            /* try {
-                  startFunc->execute(globalEnv);
-                  callUserFunction(startFunc->head->iden->name, {}, globalEnv);
-            } catch (const RuntimeError &e) {
-                  fprintf(stderr, RED "%s\n" RESET, e.what());
-                  free(indent_stack);
-                  return 1;
-            } */
-            // EXECUTION AS COMPILER WITH LLVM
-            try {
-                  CodegenContext context;
-                  context.generate(startFunc);
-                  llvm::verifyModule(*context.TheModule, &llvm::errs());
-                  context.TheModule->print(llvm::errs(), nullptr);
-            } catch (const std::exception &e) {
-                  fprintf(stderr, RED "Codegen Error: %s\n" RESET, e.what());
-                  free(indent_stack);
-                  return 1;
+            inputFile = arg;
+        }
+    }
+    if (mode_f || mode_i) {
+        yyin = stdin;
+    } else {
+        if (inputFile == "") {
+            fprintf(stderr, RED "Error:" RESET " No input file specified.\n");
+            return 1;
+        }
+        yyin = fopen(inputFile.c_str(), "r");
+        if (!yyin) {
+            fprintf(stderr, "Error: Could not open file %s\n", inputFile.c_str());
+            return 1;
+        }
+    }
+    std::string baseName = "";
+    std::string dirName = ".";
+    std::string immFile = "";
+    std::string asmFile = "";
+    if (!mode_f && !mode_i) {
+        baseName = getBaseFilename(inputFile);
+        dirName = getDirectory(inputFile);
+        immFile = dirName + "/" + baseName + ".imm";
+        asmFile = dirName + "/" + baseName + ".asm";
+    }
+    stackinit();
+    SymbolTable st;
+    startFunc = NULL;
+    fNames = std::stack<fdefNode*>();
+    submitBuiltInFunctions(st);
+    if (yyparse() != 0) {
+        fprintf(stderr, RED "Parsing failed.\n" RESET);
+        free(indent_stack);
+        return 1;
+    }
+    try {
+        startFunc->semanticCheck(st);
+        CodegenContext context;
+        context.generate(startFunc);
+        if (llvm::verifyModule(context.GetModule(), &llvm::errs())) {
+            fprintf(stderr, RED "LLVM Module verification failed!\n" RESET);
+            return 1;
+        }
+        if (mode_i) {
+            context.printIntermediate(std::cout);
+        } else if (mode_f) {
+            context.printFinal(std::cout);
+        } else {
+            (void)optimize;
+            std::ofstream imm_stream(immFile);
+            context.printIntermediate(imm_stream);
+            imm_stream.close();
+            std::ofstream asm_stream(asmFile);
+            context.printFinal(asm_stream);
+            asm_stream.close();
+            std::string link_command = "g++ -std=c++17 -no-pie -o " + outputFile + " -x assembler " + asmFile + " -x none " + "runtime_lib.o -lstdc++";
+            int link_status = system(link_command.c_str());
+            if (link_status != 0) {
+                fprintf(stderr, RED "Linking failed for: %s\n" RESET, asmFile.c_str());
+                return 1;
             }
-      }
-      free(indent_stack);
-      return 0;
+        }
+    } catch (const SemanticError &e) {
+        fprintf(stderr, RED "Semantic Error: %s\n" RESET, e.what());
+        free(indent_stack);
+        return 1;
+    } catch (const std::runtime_error &e) {
+        fprintf(stderr, RED "Codegen Error: %s\n" RESET, e.what());
+        free(indent_stack);
+        return 1;
+    }
+    free(indent_stack);
+    return 0;
 }

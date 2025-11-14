@@ -5,6 +5,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <stack>
 
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
@@ -17,6 +18,7 @@
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/GlobalVariable.h"
+#include "llvm/IR/Instructions.h"
 
 class Node;
 class exprNode;
@@ -32,29 +34,47 @@ class Id;
 class typeClass;
 
 class CodegenContext {
-private:
-    std::map<std::string, llvm::Value*> namedValues;
+public:
+    std::vector<std::map<std::string, llvm::Value*>> namedValuesStack;
     std::map<std::string, llvm::Function*> builtinFunctions;
+    std::stack<std::pair<std::string, llvm::BasicBlock*>> breakBlockStack;
+    std::stack<std::pair<std::string, llvm::BasicBlock*>> continueBlockStack;
 
 public:
     llvm::LLVMContext TheContext;
     llvm::IRBuilder<> Builder;
     std::unique_ptr<llvm::Module> TheModule;
-    llvm::Function* currentFunction;
+    llvm::Function* currentFunction; 
+    fdefNode* MainFunctionNode = nullptr; 
 
     CodegenContext();
-
     void generate(fdefNode* startFunc);
     llvm::Function* getBuiltin(const std::string& name);
     llvm::Type* getLLVMType(typeClass* t);
-    llvm::AllocaInst* createEntryBlockAlloca(llvm::Function* TheFunction, const std::string& VarName, llvm::Type* type);
+    void createBuiltinDeclarations();
+
+    llvm::AllocaInst* createEntryBlockAlloca(llvm::Type* type, const std::string& VarName);
+    llvm::GlobalVariable* createGlobalVariable(llvm::Type* type, const std::string& name);
+    llvm::Value* logError(const std::string& str);
+
+    void enterScope();
+    void exitScope();
+
     llvm::Value* findVariable(const std::string& name);
     void setVariable(const std::string& name, llvm::Value* value);
-    llvm::Value* logError(const std::string& str);
-    void clearNamedValues() { namedValues.clear(); }
+    void clearNamedValues();
 
-private:
-    void createBuiltinDeclarations();
+    static void promoteToI32(llvm::Value* &L, llvm::Value* &R, CodegenContext& context);
+
+    llvm::Module& GetModule() { return *TheModule; }
+    void printIntermediate(std::ostream& os);
+    void printFinal(std::ostream& os);
+
+    void pushLoop(std::string name, llvm::BasicBlock* breakBB, llvm::BasicBlock* continueBB);
+    void popLoop();
+    llvm::BasicBlock* getBreakBlock(std::string name);
+    llvm::BasicBlock* getContinueBlock(std::string name);
+
 };
 
 #endif

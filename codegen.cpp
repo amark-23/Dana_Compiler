@@ -1,20 +1,53 @@
 #include "codegen.hpp"
-#include "ast.hpp"
-#include "symbol.hpp"
+#include "ast.hpp" 
+#include "symbol.hpp" 
 #include <stdexcept>
 #include <iostream>
-#include <llvm/IR/Instructions.h>
+#include <string>
+
+#include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/TargetSelect.h"
+#include "llvm/Target/TargetMachine.h"
+#include "llvm/Target/TargetOptions.h"
+#include "llvm/IR/LegacyPassManager.h"
+#include "llvm/MC/TargetRegistry.h"
+#include "llvm/TargetParser/Host.h"
+#include "llvm/Support/CodeGen.h" 
+#include "llvm/ADT/SmallString.h"
+#include "llvm/IR/GlobalVariable.h"
+#include "llvm/IR/Constants.h"
+
+static std::string process_escapes(const std::string& raw_str) {
+    std::string result = "";
+    for (size_t i = 0; i < raw_str.length(); ++i) {
+        if (raw_str[i] == '\\' && i + 1 < raw_str.length()) {
+            switch (raw_str[i + 1]) {
+                case 'n':  result += '\n'; i++; break;
+                case 't':  result += '\t'; i++; break;
+                case 'r':  result += '\r'; i++; break;
+                case '\\': result += '\\'; i++; break;
+                case '"':  result += '"'; i++; break;
+                default:
+                    result += raw_str[i]; 
+                    break;
+            }
+        } else result += raw_str[i];
+    }
+    return result;
+}
 
 CodegenContext::CodegenContext() : Builder(TheContext) {
     TheModule = std::make_unique<llvm::Module>("my_compiler_module", TheContext);
     currentFunction = nullptr;
+    MainFunctionNode = nullptr;
     createBuiltinDeclarations();
+    clearNamedValues();
 }
 
 void CodegenContext::generate(fdefNode* startFunc) {
     if (!startFunc) return;
+    this->MainFunctionNode = startFunc;
     startFunc->codegen(*this);
-    TheModule->print(llvm::errs(), nullptr);
 }
 
 llvm::Function* CodegenContext::getBuiltin(const std::string& name) {
@@ -28,31 +61,58 @@ void CodegenContext::createBuiltinDeclarations() {
     llvm::Type* voidType = Builder.getVoidTy();
     llvm::Type* i8PtrType = Builder.getInt8Ty()->getPointerTo();
 
-    // writeInteger(n as int)
-    llvm::FunctionType* writeIntType = llvm::FunctionType::get(voidType, {i32Type}, false);
-    builtinFunctions["writeInteger"] = llvm::Function::Create(writeIntType, llvm::Function::ExternalLinkage, "writeInteger", TheModule.get());
+    builtinFunctions["writeInteger"] = llvm::Function::Create(llvm::FunctionType::get(voidType, {i32Type}, false), llvm::Function::ExternalLinkage, "writeInteger", TheModule.get());
+    builtinFunctions["writeChar"] = llvm::Function::Create(llvm::FunctionType::get(voidType, {i8Type}, false), llvm::Function::ExternalLinkage, "writeChar", TheModule.get());
+    builtinFunctions["writeByte"] = llvm::Function::Create(llvm::FunctionType::get(voidType, {i8Type}, false), llvm::Function::ExternalLinkage, "writeByte", TheModule.get());
+    builtinFunctions["writeString"] = llvm::Function::Create(llvm::FunctionType::get(voidType, {i8PtrType}, false), llvm::Function::ExternalLinkage, "writeString", TheModule.get());
+    builtinFunctions["readInteger"] = llvm::Function::Create(llvm::FunctionType::get(i32Type, {}, false), llvm::Function::ExternalLinkage, "readInteger", TheModule.get());
+    builtinFunctions["readChar"] = llvm::Function::Create(llvm::FunctionType::get(i8Type, {}, false), llvm::Function::ExternalLinkage, "readChar", TheModule.get());
+    builtinFunctions["readByte"] = llvm::Function::Create(llvm::FunctionType::get(i8Type, {}, false), llvm::Function::ExternalLinkage, "readByte", TheModule.get());
+    builtinFunctions["readString"] = llvm::Function::Create(llvm::FunctionType::get(voidType, {i32Type, i8PtrType}, false), llvm::Function::ExternalLinkage, "readString", TheModule.get());
+    builtinFunctions["extend"] = llvm::Function::Create(llvm::FunctionType::get(i32Type, {i8Type}, false), llvm::Function::ExternalLinkage, "extend", TheModule.get());
+    builtinFunctions["shrink"] = llvm::Function::Create(llvm::FunctionType::get(i8Type, {i32Type}, false), llvm::Function::ExternalLinkage, "shrink", TheModule.get());
+    builtinFunctions["strlen"] = llvm::Function::Create(llvm::FunctionType::get(i32Type, {i8PtrType}, false), llvm::Function::ExternalLinkage, "dana_strlen", TheModule.get());
+    builtinFunctions["strcmp"] = llvm::Function::Create(llvm::FunctionType::get(i32Type, {i8PtrType, i8PtrType}, false), llvm::Function::ExternalLinkage, "dana_strcmp", TheModule.get());
+    builtinFunctions["strcpy"] = llvm::Function::Create(llvm::FunctionType::get(i8PtrType, {i8PtrType, i8PtrType}, false), llvm::Function::ExternalLinkage, "dana_strcpy", TheModule.get());
+    builtinFunctions["strcat"] = llvm::Function::Create(llvm::FunctionType::get(i8PtrType, {i8PtrType, i8PtrType}, false), llvm::Function::ExternalLinkage, "dana_strcat", TheModule.get());
+}
 
-    // writeChar(c as byte)
-    llvm::FunctionType* writeCharType = llvm::FunctionType::get(voidType, {i8Type}, false);
-    builtinFunctions["writeChar"] = llvm::Function::Create(writeCharType, llvm::Function::ExternalLinkage, "writeChar", TheModule.get());
+void CodegenContext::pushLoop(std::string name, llvm::BasicBlock* breakBB, llvm::BasicBlock* continueBB) {
+    breakBlockStack.push({name, breakBB});
+    continueBlockStack.push({name, continueBB});
+}
 
-    // writeByte(b as byte)
-    builtinFunctions["writeByte"] = llvm::Function::Create(writeCharType, llvm::Function::ExternalLinkage, "writeByte", TheModule.get());
+void CodegenContext::popLoop() {
+    if (!breakBlockStack.empty()) breakBlockStack.pop();
+    if (!continueBlockStack.empty()) continueBlockStack.pop();
+}
 
-    // writeString(s as byte[])
-    llvm::FunctionType* writeStringType = llvm::FunctionType::get(voidType, {i8PtrType}, false);
-    builtinFunctions["writeString"] = llvm::Function::Create(writeStringType, llvm::Function::ExternalLinkage, "writeString", TheModule.get());
+llvm::BasicBlock* CodegenContext::getBreakBlock(std::string name) {
+    if (name == "") {
+        if (breakBlockStack.empty()) return nullptr;
+        return breakBlockStack.top().second;
+    } else {
+        std::stack<std::pair<std::string, llvm::BasicBlock*>> tempStack = breakBlockStack;
+        while (!tempStack.empty()) {
+            if (tempStack.top().first == name) return tempStack.top().second;
+            tempStack.pop();
+        }
+        return nullptr;
+    }
+}
 
-    // readInteger() is int
-    llvm::FunctionType* readIntType = llvm::FunctionType::get(i32Type, {}, false);
-    builtinFunctions["readInteger"] = llvm::Function::Create(readIntType, llvm::Function::ExternalLinkage, "readInteger", TheModule.get());
-
-    // readChar() is byte
-    llvm::FunctionType* readCharType = llvm::FunctionType::get(i8Type, {}, false);
-    builtinFunctions["readChar"] = llvm::Function::Create(readCharType, llvm::Function::ExternalLinkage, "readChar", TheModule.get());
-
-    // readByte() is byte
-    builtinFunctions["readByte"] = llvm::Function::Create(readCharType, llvm::Function::ExternalLinkage, "readByte", TheModule.get());
+llvm::BasicBlock* CodegenContext::getContinueBlock(std::string name) {
+    if (name == "") {
+        if (continueBlockStack.empty()) return nullptr;
+        return continueBlockStack.top().second;
+    } else {
+        std::stack<std::pair<std::string, llvm::BasicBlock*>> tempStack = continueBlockStack;
+        while (!tempStack.empty()) {
+            if (tempStack.top().first == name) return tempStack.top().second;
+            tempStack.pop();
+        }
+        return nullptr;
+    }
 }
 
 llvm::Type* CodegenContext::getLLVMType(typeClass* t) {
@@ -61,7 +121,6 @@ llvm::Type* CodegenContext::getLLVMType(typeClass* t) {
         std::vector<int> dimensions;
         typeClass* finalBase = t;
         typeClass* current = t;
-
         while (auto* current_arr = dynamic_cast<arrayType*>(current)) {
             Const* sz = current_arr->getSize();
             int n = 0;
@@ -73,24 +132,20 @@ llvm::Type* CodegenContext::getLLVMType(typeClass* t) {
         std::reverse(dimensions.begin(), dimensions.end());
         llvm::Type* baseLLVMType = getLLVMType(finalBase);
         llvm::Type* currentType = baseLLVMType;
-        for (auto it = dimensions.rbegin(); it != dimensions.rend(); ++it) {
-            currentType = llvm::ArrayType::get(currentType, *it);
-        }
+        for (auto it = dimensions.rbegin(); it != dimensions.rend(); ++it) currentType = llvm::ArrayType::get(currentType, *it);
         return currentType;
     }
-
     if (auto* ref = dynamic_cast<refType*>(t)) {
         llvm::Type* baseType = getLLVMType(ref->getBaseType());
         return llvm::PointerType::get(baseType, 0);
     }
-
     if (auto* b = dynamic_cast<basicType*>(t)) {
         Type ty = b->getType();
         switch (ty) {
             case TYPE_INT:  return Builder.getInt32Ty();
-            case TYPE_CHAR: return Builder.getInt8Ty();
+            case TYPE_CHAR: return Builder.getInt8Ty(); 
             case TYPE_BYTE: return Builder.getInt8Ty();
-            case TYPE_BOOL: return Builder.getInt1Ty();
+            case TYPE_BOOL: return Builder.getInt1Ty(); 
             case TYPE_VOID: return Builder.getVoidTy();
             default: return Builder.getVoidTy();
         }
@@ -98,22 +153,33 @@ llvm::Type* CodegenContext::getLLVMType(typeClass* t) {
     return Builder.getVoidTy();
 }
 
-llvm::AllocaInst* CodegenContext::createEntryBlockAlloca(llvm::Function* TheFunction, const std::string& VarName, llvm::Type* type) {
-    llvm::IRBuilder<> TmpB(&TheFunction->getEntryBlock(), TheFunction->getEntryBlock().begin());
+llvm::AllocaInst* CodegenContext::createEntryBlockAlloca(llvm::Type* type, const std::string& VarName) {
+    if (!currentFunction) {
+        logError("createEntryBlockAlloca called with no current function");
+        return nullptr;
+    }
+    llvm::IRBuilder<> TmpB(&currentFunction->getEntryBlock(), currentFunction->getEntryBlock().begin());
     llvm::AllocaInst* Alloca = TmpB.CreateAlloca(type, nullptr, VarName);
     setVariable(VarName, Alloca);
     return Alloca;
 }
 
-llvm::Value* CodegenContext::findVariable(const std::string& name) {
-    if (namedValues.count(name)) {
-        return namedValues[name];
+llvm::GlobalVariable* CodegenContext::createGlobalVariable(llvm::Type* type, const std::string& name) {
+    if (!TheModule) {
+        logError("createGlobalVariable: module is null");
+        return nullptr;
     }
-    return logError("Unknown variable name: " + name);
-}
-
-void CodegenContext::setVariable(const std::string& name, llvm::Value* value) {
-    namedValues[name] = value;
+    llvm::Constant* init = llvm::Constant::getNullValue(type);
+    auto *GV = new llvm::GlobalVariable(
+        /*Module=*/*TheModule,
+        /*Type=*/type,
+        /*isConstant=*/false,
+        /*Linkage=*/llvm::GlobalValue::ExternalLinkage,
+        /*Initializer=*/init,
+        /*Name=*/name
+    );
+    setVariable(name, GV);
+    return GV;
 }
 
 llvm::Value* CodegenContext::logError(const std::string& str) {
@@ -121,107 +187,316 @@ llvm::Value* CodegenContext::logError(const std::string& str) {
     return nullptr;
 }
 
+void CodegenContext::enterScope() {
+    namedValuesStack.push_back(std::map<std::string, llvm::Value*>());
+}
+
+void CodegenContext::exitScope() {
+    if (!namedValuesStack.empty()) {
+        namedValuesStack.pop_back();
+    } else {
+        logError("exitScope called on empty scope stack");
+    }
+}
+
+void CodegenContext::clearNamedValues() {
+    namedValuesStack.clear();
+    enterScope();
+}
+
+llvm::Value* CodegenContext::findVariable(const std::string& name) {
+    for (auto it = namedValuesStack.rbegin(); it != namedValuesStack.rend(); ++it) {
+        if (it->count(name)) return (*it)[name];
+    }
+    return nullptr; 
+}
+
+void CodegenContext::setVariable(const std::string& name, llvm::Value* value) {
+    if (!namedValuesStack.empty()) namedValuesStack.back()[name] = value;
+    else logError("setVariable called with no active scope");
+}
+
+void CodegenContext::promoteToI32(llvm::Value* &L, llvm::Value* &R, CodegenContext& context) {
+    auto* LTy = L->getType();
+    auto* RTy = R->getType();
+    auto* i32Ty = context.Builder.getInt32Ty();
+    if (LTy == RTy) return;
+    if (LTy->isIntegerTy(1) || LTy->isIntegerTy(8)) L = context.Builder.CreateZExt(L, i32Ty, "promL");
+    if (RTy->isIntegerTy(1) || RTy->isIntegerTy(8)) R = context.Builder.CreateZExt(R, i32Ty, "promR");
+}
+
+void CodegenContext::printIntermediate(std::ostream& os) {
+    std::string ir_str;
+    llvm::raw_string_ostream ros(ir_str);
+    TheModule->print(ros, nullptr);
+    os << ros.str();
+}
+
+void CodegenContext::printFinal(std::ostream& os) {
+    auto TargetTriple = llvm::sys::getDefaultTargetTriple();
+    llvm::InitializeAllTargetInfos();
+    llvm::InitializeAllTargets();
+    llvm::InitializeAllTargetMCs();
+    llvm::InitializeAllAsmPrinters();
+    llvm::InitializeAllAsmParsers();
+    std::string Error;
+    auto Target = llvm::TargetRegistry::lookupTarget(TargetTriple, Error);
+    if (!Target) {
+        llvm::errs() << "Target lookup failed: " << Error;
+        throw std::runtime_error("Could not find target for " + TargetTriple);
+    }
+    auto CPU = "generic";
+    auto Features = "";
+    llvm::TargetOptions opt;
+    auto RM = std::optional<llvm::Reloc::Model>();
+    auto TheTargetMachine = Target->createTargetMachine(TargetTriple, CPU, Features, opt, RM);
+    TheModule->setDataLayout(TheTargetMachine->createDataLayout());
+    TheModule->setTargetTriple(TargetTriple);
+    llvm::SmallString<0> AsmStrVec;
+    llvm::raw_svector_ostream asm_ros(AsmStrVec); 
+    llvm::legacy::PassManager pass;
+    if (TheTargetMachine->addPassesToEmitFile(pass, asm_ros, nullptr, llvm::CodeGenFileType::AssemblyFile)) throw std::runtime_error("TargetMachine can't emit assembly file");
+    pass.run(*TheModule);
+    os << asm_ros.str().str();
+}
+
+llvm::Value* headerNode::codegen(CodegenContext& context) { return nullptr; }
+llvm::Value* paramNode::codegen(CodegenContext& context) { return nullptr; }
+llvm::Value* Id::codegen(CodegenContext& context) { return nullptr; }
+llvm::Value* Const::codegen(CodegenContext& context) { return nullptr; }
+llvm::Type* lvalNode::getType(CodegenContext& context) { return nullptr; }
+
+
 llvm::Value* fdefNode::codegen(CodegenContext& context) {
     headerNode* hdr = this->head;
     if (!hdr || !hdr->iden) return context.logError("Function definition missing header");
     std::string fnName = hdr->iden->name;
+    bool isMain = (this == context.MainFunctionNode);
+    if (isMain) fnName = "main";
+
     llvm::Function* TheFunction = context.TheModule->getFunction(fnName);
     if (!TheFunction) {
         std::vector<llvm::Type*> ParamTypes;
         if (hdr->params) {
             paramNode* p = hdr->params;
             while(p) {
-                for (size_t i = 0; i < p->names->size(); ++i) {
-                    ParamTypes.push_back(context.getLLVMType(p->types));
+                if (p->names) {
+                    llvm::Type* paramT = context.getLLVMType(p->types);
+                    if (paramT->isArrayTy()) {
+                        // It's an array. Get its base type and make a pointer.
+                        llvm::Type* baseT = paramT;
+                        while(baseT->isArrayTy()) {
+                            baseT = baseT->getArrayElementType();
+                        }
+                        paramT = baseT->getPointerTo();
+                    }
+                    for (size_t i = 0; i < p->names->size(); ++i) {
+                        ParamTypes.push_back(context.getLLVMType(p->types));
+                    }
                 }
                 p = p->tail;
             }
         }
-        llvm::Type* retType = context.getLLVMType(hdr->headType);
+
+        llvm::Type* retType;
+        if (isMain) retType = context.Builder.getInt32Ty();
+        else  retType = context.getLLVMType(hdr->headType);
+
         llvm::FunctionType* FT = llvm::FunctionType::get(retType, ParamTypes, false);
         TheFunction = llvm::Function::Create(FT, llvm::Function::ExternalLinkage, fnName, context.TheModule.get());
     }
     llvm::BasicBlock* EntryBB = llvm::BasicBlock::Create(context.TheContext, "entry", TheFunction);
-    context.Builder.SetInsertPoint(EntryBB);
+    llvm::Function* OldFunction = context.currentFunction;
     context.currentFunction = TheFunction;
-    context.clearNamedValues();
+    context.enterScope(); 
+    context.Builder.SetInsertPoint(EntryBB);
     if (hdr->params) {
         paramNode* p = hdr->params;
         auto arg_it = TheFunction->arg_begin();
         while(p) {
-            for (const auto& name : *(p->names)) {
-                if (arg_it == TheFunction->arg_end())
-                    return context.logError("Too few arguments provided to function " + fnName);
-                
-                llvm::Value* arg = arg_it++;
-                arg->setName(name);
-                llvm::Type* type = context.getLLVMType(p->types);
-                llvm::AllocaInst* Alloca = context.createEntryBlockAlloca(TheFunction, name, type);
-                context.Builder.CreateStore(arg, Alloca);
+            if (p->names) {
+                for (const auto& name : *(p->names)) {
+                    if (arg_it == TheFunction->arg_end())
+                        return context.logError("Too few arguments provided to function " + fnName);
+                    
+                    llvm::Value* arg = arg_it++;
+                    arg->setName(name);
+
+                    llvm::Type* type = context.getLLVMType(p->types);
+                    llvm::AllocaInst* Alloca = context.createEntryBlockAlloca(type, name);
+                    context.Builder.CreateStore(arg, Alloca);
+                }
             }
             p = p->tail;
         }
     }
     if (this->body) this->body->codegen(context);
+    llvm::BasicBlock* CurrentBB = context.Builder.GetInsertBlock();
+    if (!CurrentBB || CurrentBB->getTerminator() == nullptr) {
+        llvm::Type* retType = TheFunction->getReturnType();
+        if (isMain) context.Builder.CreateRet(llvm::ConstantInt::get(context.TheContext, llvm::APInt(32, 0, true)));
+        else if (retType->isVoidTy()) context.Builder.CreateRetVoid();
+        else context.Builder.CreateRet(llvm::Constant::getNullValue(retType));
+    }
+    context.exitScope(); 
+    context.currentFunction = OldFunction;
+    for (auto &BB : *TheFunction) {
+    if (!BB.getTerminator()) {
+        context.Builder.SetInsertPoint(&BB);
+        if (isMain) context.Builder.CreateRet(llvm::ConstantInt::get(context.TheContext, llvm::APInt(32, 0, true)));
+        else if (TheFunction->getReturnType()->isVoidTy()) context.Builder.CreateRetVoid();
+        else context.Builder.CreateRet(llvm::Constant::getNullValue(TheFunction->getReturnType()));
+        }
+    }
     llvm::verifyFunction(*TheFunction);
+    if (llvm::verifyFunction(*TheFunction, &llvm::errs())) {
+        llvm::errs() << "Invalid IR in function " << fnName << "\n";
+        TheFunction->print(llvm::errs());
+    }
     return TheFunction;
 }
 
 
 llvm::Value* stmtNode::codegen(CodegenContext& context) {
-    if (stmtType == "vardecl") {
+    if (context.Builder.GetInsertBlock() == nullptr || 
+        context.Builder.GetInsertBlock()->getTerminator() != nullptr) {
+        return nullptr;
+    }
+    
+    if (stmtType == "loop") {
+        std::string loopName = (this->tag ? this->tag->name : "");
+        llvm::Function* TheFunction = context.currentFunction;
+        if (!TheFunction) return context.logError("Loop outside of a function");
+        llvm::BasicBlock* LoopHeaderBB = llvm::BasicBlock::Create(context.TheContext, loopName + "_header", TheFunction);
+        llvm::BasicBlock* LoopBodyBB = llvm::BasicBlock::Create(context.TheContext, loopName + "_body", TheFunction);
+        llvm::BasicBlock* AfterLoopBB = llvm::BasicBlock::Create(context.TheContext, loopName + "_after", TheFunction);
+        context.pushLoop(loopName, AfterLoopBB, LoopHeaderBB);
+        context.Builder.CreateBr(LoopHeaderBB);
+        context.Builder.SetInsertPoint(LoopHeaderBB);
+        context.Builder.CreateBr(LoopBodyBB);
+        context.Builder.SetInsertPoint(LoopBodyBB);
+        if (this->stmtBody) this->stmtBody->codegen(context);
+        if (context.Builder.GetInsertBlock()->getTerminator() == nullptr) context.Builder.CreateBr(LoopHeaderBB);
+        context.popLoop();
+        context.Builder.SetInsertPoint(AfterLoopBB);
+    }
+    else if (stmtType == "break") {
+        std::string targetName = (this->tag ? this->tag->name : "");
+        llvm::BasicBlock* BreakBB = context.getBreakBlock(targetName);
+        if (!BreakBB) return context.logError("Break statement not within a loop or target '" + targetName + "' not found");
+        context.Builder.CreateBr(BreakBB);
+    }
+    else if (stmtType == "continue") {
+        std::string targetName = (this->tag ? this->tag->name : "");
+        llvm::BasicBlock* ContinueBB = context.getContinueBlock(targetName);
+        if (!ContinueBB) return context.logError("Continue statement not within a loop or target '" + targetName + "' not found");
+        context.Builder.CreateBr(ContinueBB);
+    }
+    else if (stmtType == "exit") {
+        if (context.currentFunction->getReturnType()->isVoidTy()) context.Builder.CreateRetVoid();
+        else context.Builder.CreateRet(llvm::Constant::getNullValue(context.currentFunction->getReturnType()));
+    }
+    else if (stmtType == "vardecl") {
         if (!varType || !varNames) return context.logError("Malformed vardecl");
         llvm::Type* type = context.getLLVMType(varType);
+        if (type->isVoidTy()) return context.logError("Cannot declare variable of type void");
+        
         for (const auto& n : *varNames) {
-            context.createEntryBlockAlloca(context.currentFunction, n, type);
+            if (context.currentFunction == nullptr) {
+                llvm::GlobalVariable* GV = context.createGlobalVariable(type, n);
+                if (!GV) return context.logError("Failed to create global variable " + n);
+            } else {
+                llvm::AllocaInst* alloca = context.createEntryBlockAlloca(type, n);
+                if (!alloca) return context.logError("Failed to create local alloca for " + n);
+                context.setVariable(n, alloca);
+            }
         }
     } 
+    else if (stmtType == "decl") {}
     else if (stmtType == "asgn") {
         if (!lval || !exp) return context.logError("Invalid assignment");
+        
         llvm::Value* lhsPtr = lval->codegen_ptr(context);
         if (!lhsPtr) return context.logError("LHS of assignment is not a valid l-value");
+
         llvm::Value* rhsVal = exp->codegen(context);
         if (!rhsVal) return context.logError("RHS of assignment failed to generate code");
+        
         context.Builder.CreateStore(rhsVal, lhsPtr);
     } 
     else if (stmtType == "pc") {
         if (!exp) return context.logError("Procedure call missing expression");
-        exp->codegen(context);
+        exp->codegen(context); 
     } 
     else if (stmtType == "return") {
         if (exp) {
             llvm::Value* retVal = exp->codegen(context);
+            if (!retVal) return context.logError("Return expression failed to generate code");
+            llvm::Type* funcRetType = context.currentFunction->getReturnType();
+            if (retVal->getType() != funcRetType) {
+                if (funcRetType->isIntegerTy() && retVal->getType()->isIntegerTy(1)) retVal = context.Builder.CreateZExt(retVal, funcRetType, "castexpr");
+            }
             context.Builder.CreateRet(retVal);
-        } else context.Builder.CreateRetVoid();
+        } else {
+            context.Builder.CreateRetVoid();
+        }
     } 
     else if (stmtType == "if") {
         if (!ifnode) return context.logError("Malformed if");
         ifnode->codegen(context);
     }
-
-    if (this->stmtTail) this->stmtTail->codegen(context);
+    else if (stmtType == "def") {
+        llvm::BasicBlock* currentBlock = context.Builder.GetInsertBlock();
+        funcDef->codegen(context);
+        if (currentBlock) context.Builder.SetInsertPoint(currentBlock);
+    }
+    if (context.Builder.GetInsertBlock() != nullptr && 
+        context.Builder.GetInsertBlock()->getTerminator() == nullptr) 
+    {
+        if (this->stmtTail) {
+            this->stmtTail->codegen(context);
+        }
+    }
     return nullptr;
 }
 
 llvm::Value* ifNode::codegen(CodegenContext& context) {
+    if (ifCond == nullptr) {
+        if (ifStmtBody) ifStmtBody->codegen(context);
+        return nullptr;
+    }
     llvm::Value* condVal = ifCond->codegen(context);
     if (!condVal) return context.logError("If condition failed to generate code");
-    if (condVal->getType()->isIntegerTy(32)) {
+    if (condVal->getType()->isIntegerTy(32)) { 
         condVal = context.Builder.CreateICmpNE(condVal, 
-            llvm::ConstantInt::get(context.TheContext, llvm::APInt(32, 0)), "ifcond");
+        llvm::ConstantInt::get(context.TheContext, llvm::APInt(32, 0)), "ifcond");
+    } else if (!condVal->getType()->isIntegerTy(1)) {
+        return context.logError("If condition is not a boolean or integer");
     }
     llvm::Function* TheFunction = context.currentFunction;
     llvm::BasicBlock* ThenBB = llvm::BasicBlock::Create(context.TheContext, "then", TheFunction);
     llvm::BasicBlock* ElseBB = llvm::BasicBlock::Create(context.TheContext, "else", TheFunction);
     llvm::BasicBlock* MergeBB = llvm::BasicBlock::Create(context.TheContext, "ifcont", TheFunction);
-    context.Builder.CreateCondBr(condVal, ThenBB, ElseBB);
+    bool hasElse = (ifTail != nullptr);
+    llvm::BasicBlock* NextBB = hasElse ? ElseBB : MergeBB;
+    context.Builder.CreateCondBr(condVal, ThenBB, NextBB);
     context.Builder.SetInsertPoint(ThenBB);
     if (ifStmtBody) ifStmtBody->codegen(context);
-    context.Builder.CreateBr(MergeBB);
-    context.Builder.SetInsertPoint(ElseBB);
-    if (ifTail) ifTail->codegen(context);
-    context.Builder.CreateBr(MergeBB);
-    context.Builder.SetInsertPoint(MergeBB);
+    if (context.Builder.GetInsertBlock()->getTerminator() == nullptr) {
+        context.Builder.CreateBr(MergeBB);
+    }
+
+    if (hasElse) {
+        context.Builder.SetInsertPoint(ElseBB);
+        if (ifTail) ifTail->codegen(context);
+        if (context.Builder.GetInsertBlock()->getTerminator() == nullptr) {
+            context.Builder.CreateBr(MergeBB);
+        }
+    } else {
+        ElseBB->eraseFromParent();
+    }
+    if (!MergeBB->hasNPredecessorsOrMore(1)) MergeBB->eraseFromParent();
+    else context.Builder.SetInsertPoint(MergeBB);
     
     return nullptr;
 }
@@ -238,13 +513,7 @@ llvm::Value* exprNode::codegen(CodegenContext& context) {
         case 'i':
         {
             if (!lval) return context.logError("Identifier expression missing lval");
-            llvm::Value* ptr = lval->codegen_ptr(context);
-            if (!ptr) return nullptr;
-            llvm::Type* loadType = nullptr;
-            if (auto* alloca = llvm::dyn_cast<llvm::AllocaInst>(ptr)) loadType = alloca->getAllocatedType();
-            else if (auto* gep = llvm::dyn_cast<llvm::GetElementPtrInst>(ptr)) loadType = gep->getResultElementType();
-            else return context.logError("lval pointer is not an Alloca or GEP");
-            return context.Builder.CreateLoad(loadType, ptr, "loadtmp");
+            return lval->codegen(context); 
         }
         case 'f':
             if (!func) return context.logError("Function call node missing fcallNode");
@@ -271,22 +540,49 @@ llvm::Value* exprNode::codegen(CodegenContext& context) {
             llvm::Value* L = leftExpr->codegen(context);
             llvm::Value* R = rightExpr->codegen(context);
             if (!L || !R) return nullptr;
-            return context.Builder.CreateSDiv(L, R, "divtmp");
+            return context.Builder.CreateSDiv(L, R, "divtmp"); 
+        }
+        case '%': {
+            llvm::Value* L = leftExpr->codegen(context);
+            llvm::Value* R = rightExpr->codegen(context);
+            if (!L || !R) return nullptr;
+            return context.Builder.CreateSRem(L, R, "modtmp"); 
         }
         case '=': {
             llvm::Value* L = leftExpr->codegen(context);
             llvm::Value* R = rightExpr->codegen(context);
+            CodegenContext::promoteToI32(L, R, context);
             return context.Builder.CreateICmpEQ(L, R, "eqtmp");
         }
         case '<': {
             llvm::Value* L = leftExpr->codegen(context);
             llvm::Value* R = rightExpr->codegen(context);
-            return context.Builder.CreateICmpSLT(L, R, "lttmp");
+            CodegenContext::promoteToI32(L, R, context); 
+            return context.Builder.CreateICmpSLT(L, R, "lttmp"); 
         }
         case '>': {
             llvm::Value* L = leftExpr->codegen(context);
             llvm::Value* R = rightExpr->codegen(context);
-            return context.Builder.CreateICmpSGT(L, R, "gttmp");
+            CodegenContext::promoteToI32(L, R, context); 
+            return context.Builder.CreateICmpSGT(L, R, "gttmp"); 
+        }
+        case 'g': {
+            llvm::Value* L = leftExpr->codegen(context);
+            llvm::Value* R = rightExpr->codegen(context);
+            CodegenContext::promoteToI32(L, R, context);
+            return context.Builder.CreateICmpSGE(L, R, "getmp");
+        }
+        case 'l': {
+            llvm::Value* L = leftExpr->codegen(context);
+            llvm::Value* R = rightExpr->codegen(context);
+            CodegenContext::promoteToI32(L, R, context);
+            return context.Builder.CreateICmpSLE(L, R, "letmp");
+        }
+        case 'd': {
+            llvm::Value* L = leftExpr->codegen(context);
+            llvm::Value* R = rightExpr->codegen(context);
+            CodegenContext::promoteToI32(L, R, context);
+            return context.Builder.CreateICmpNE(L, R, "netmp");
         }
         case 'a': {
             llvm::Value* L = leftExpr->codegen(context);
@@ -312,65 +608,128 @@ llvm::Value* fcallNode::codegen(CodegenContext& context) {
     llvm::Function* CalleeF = context.TheModule->getFunction(iden->name);
     if (!CalleeF) CalleeF = context.getBuiltin(iden->name);
     if (!CalleeF) return context.logError("Unknown function referenced: " + iden->name);
-
     std::vector<llvm::Value*> ArgsV;
+    llvm::FunctionType* FType = CalleeF->getFunctionType();
     if (args) {
+        if (args->size() != FType->getNumParams()) return context.logError("Incorrect # of arguments passed to " + iden->name);
+        int i = 0;
         for (auto* argExpr : *args) {
-            ArgsV.push_back(argExpr->codegen(context));
+            llvm::Type* ParamType = FType->getParamType(i++);
+            if (ParamType->isPointerTy()) {
+                if (argExpr->lval) ArgsV.push_back(argExpr->lval->codegen_ptr(context));
+                else return context.logError("Expression is not an l-value, cannot pass as ref");
+            } else {
+                ArgsV.push_back(argExpr->codegen(context));
+            }
             if (!ArgsV.back()) return nullptr;
         }
     }
-
-    return context.Builder.CreateCall(CalleeF, ArgsV, "calltmp");
+    if (FType->getReturnType()->isVoidTy()) {
+        context.Builder.CreateCall(FType, CalleeF, ArgsV);
+        return nullptr;
+    } else return context.Builder.CreateCall(FType, CalleeF, ArgsV, "calltmp");
 }
 
-llvm::Value* lvalNode::codegen_ptr(CodegenContext& context) {
-    llvm::Value* Ptr = context.findVariable(ident->name);
-
-    if (!Ptr) return context.logError("lval base variable not found: " + ident->name);
-    if (!ind || ind->empty()) return Ptr;
-
-    std::vector<llvm::Value*> IdxList;
-    IdxList.push_back(llvm::ConstantInt::get(context.TheContext, llvm::APInt(32, 0)));
-    llvm::Type* currentType = static_cast<llvm::AllocaInst*>(Ptr)->getAllocatedType();
-
-    for (auto* idxExpr : *ind) {
-        if (currentType->isArrayTy()) {
-            IdxList.push_back(idxExpr->codegen(context));
-            currentType = currentType->getArrayElementType();
-        } else return context.logError("Too many indices for array: " + ident->name);
-    }
-
-    llvm::Type* elemType = static_cast<llvm::AllocaInst*>(Ptr)->getAllocatedType();
-    return context.Builder.CreateGEP(elemType, Ptr, IdxList, "geptmp");
-}
 
 llvm::Value* lvalNode::codegen(CodegenContext& context) {
+    if (isString) {
+        std::string raw_literal = ident->name;
+        std::string processed_str = process_escapes(raw_literal.substr(1, raw_literal.length() - 2));
+        return context.Builder.CreateGlobalStringPtr(processed_str);
+    }
     llvm::Value* ptr = codegen_ptr(context);
     if (!ptr) return nullptr;
-
     llvm::Type* loadType = nullptr;
-    if (auto* alloca = llvm::dyn_cast<llvm::AllocaInst>(ptr)) loadType = alloca->getAllocatedType();
-    else if (auto* gep = llvm::dyn_cast<llvm::GetElementPtrInst>(ptr)) loadType = gep->getResultElementType();
-    else return context.logError("lval pointer is not an Alloca or GEP");
-
+    if (auto* alloca = llvm::dyn_cast<llvm::AllocaInst>(ptr)) {
+        loadType = alloca->getAllocatedType();
+    } else if (auto* gep = llvm::dyn_cast<llvm::GetElementPtrInst>(ptr)) {
+        loadType = gep->getResultElementType();
+    } else if (auto* gv = llvm::dyn_cast<llvm::GlobalVariable>(ptr)) {
+        loadType = gv->getValueType();
+    } else if (auto* arg = llvm::dyn_cast<llvm::Argument>(ptr)) {
+        if (auto *PT = llvm::dyn_cast<llvm::PointerType>(arg->getType()))
+            loadType = PT->getArrayElementType();
+        else
+            loadType = arg->getType();
+    } else {
+        return context.logError("lval::codegen: ptr is not Alloca, GEP, Argument, or GlobalVariable");
+    }
     if (loadType == nullptr) return context.logError("Could not determine type to load from lval");
+    if (loadType->isArrayTy()) {
+        std::vector<llvm::Value*> IdxList;
+        IdxList.push_back(llvm::ConstantInt::get(context.TheContext, llvm::APInt(32, 0)));
+        IdxList.push_back(llvm::ConstantInt::get(context.TheContext, llvm::APInt(32, 0)));
+        llvm::Type* ptrType = nullptr;
+        if (auto* alloca = llvm::dyn_cast<llvm::AllocaInst>(ptr)) ptrType = alloca->getAllocatedType();
+        else if (auto* gep = llvm::dyn_cast<llvm::GetElementPtrInst>(ptr)) ptrType = gep->getSourceElementType();
+        else if (auto* gv = llvm::dyn_cast<llvm::GlobalVariable>(ptr)) ptrType = gv->getValueType();
+        else if (auto* arg = llvm::dyn_cast<llvm::Argument>(ptr)) {
+            if (auto *PT = llvm::dyn_cast<llvm::PointerType>(arg->getType()))
+                ptrType = PT->getArrayElementType();
+            else
+                ptrType = arg->getType();
+        } else ptrType = loadType;
+        return context.Builder.CreateGEP(ptrType, ptr, IdxList, "arraydecayptr");
+    }
     return context.Builder.CreateLoad(loadType, ptr, "loadtmp");
 }
 
-llvm::Type* lvalNode::getType(CodegenContext& context) {
-    return nullptr;
-}
 
-llvm::Value* headerNode::codegen(CodegenContext& context) {
-    return nullptr; 
-}
-llvm::Value* paramNode::codegen(CodegenContext& context) {
-    return nullptr; 
-}
-llvm::Value* Id::codegen(CodegenContext& context) {
-    return nullptr; 
-}
-llvm::Value* Const::codegen(CodegenContext& context) {
-    return nullptr; 
+llvm::Value* lvalNode::codegen_ptr(CodegenContext& context) {
+    if (isString) {
+        std::string raw_literal = ident->name;
+        std::string processed_str = process_escapes(raw_literal.substr(1, raw_literal.length() - 2));
+        return context.Builder.CreateGlobalStringPtr(processed_str);
+    }
+    llvm::Value* Ptr = context.findVariable(ident->name);
+    if (!Ptr) return context.logError("lval base variable not found: " + ident->name);
+    if (!ind || ind->empty()) {
+        if (auto* alloca = llvm::dyn_cast<llvm::AllocaInst>(Ptr)) {
+            if (alloca->getAllocatedType()->isPointerTy()) {
+                return context.Builder.CreateLoad(alloca->getAllocatedType(), Ptr, "loadrefptr");
+            }
+        }
+    }
+    
+    if (!ind || ind->empty()) return Ptr;
+
+    std::vector<llvm::Value*> IdxList;
+    llvm::Type* gepBaseType = nullptr;
+
+    if (auto* alloca = llvm::dyn_cast<llvm::AllocaInst>(Ptr)) {
+        gepBaseType = alloca->getAllocatedType();
+        IdxList.push_back(llvm::ConstantInt::get(context.TheContext, llvm::APInt(32, 0)));
+    } else if (auto* gv = llvm::dyn_cast<llvm::GlobalVariable>(Ptr)) {
+        gepBaseType = gv->getValueType();
+        IdxList.push_back(llvm::ConstantInt::get(context.TheContext, llvm::APInt(32, 0)));
+    } else if (auto* arg = llvm::dyn_cast<llvm::Argument>(Ptr)) {
+        if (auto *PT = llvm::dyn_cast<llvm::PointerType>(arg->getType()))
+            gepBaseType = PT->getArrayElementType();
+        else
+            return context.logError("GEP on argument with non-pointer type");
+    } else {
+        return context.logError("GEP on unhandled pointer type (not Alloca, GlobalVariable or Arg)");
+    }
+    llvm::Type* currentType = gepBaseType;
+    for (auto* idxExpr : *ind) {
+        if (currentType == nullptr) return context.logError("Array indexing on non-array type: " + ident->name);
+        if (currentType->isArrayTy()) {
+            IdxList.push_back(idxExpr->codegen(context));
+            currentType = currentType->getArrayElementType();
+        } else if (currentType->isPointerTy()) {
+            IdxList.push_back(idxExpr->codegen(context));
+            if (currentType->isArrayTy()) {
+                currentType = currentType->getArrayElementType();
+            } else if (currentType->isPointerTy()) {
+                if (auto *PT = llvm::dyn_cast<llvm::PointerType>(currentType))
+                    currentType = PT->getArrayElementType();
+                else
+                    return context.logError("Pointer does not have element type");
+            }
+        }
+         else {
+            return context.logError("Too many indices for array: " + ident->name);
+        }
+    }
+    return context.Builder.CreateGEP(gepBaseType, Ptr, IdxList, "geptmp");
 }
