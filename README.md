@@ -5,7 +5,7 @@ This repository contains the Dana Compiler, which includes a lexer and parser im
 ## Cloning the Repository
 To get started, clone this repository using:
 ```sh
-git clone https://github.com/amark-23/Dana_Compiler.git
+git clone --recurse-submodules https://github.com/amark-23/Dana_Compiler.git
 cd Dana_Compiler
 ```
 
