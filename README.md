@@ -9,19 +9,6 @@ git clone --recurse-submodules https://github.com/amark-23/Dana_Compiler.git
 cd Dana_Compiler
 ```
 
-## Project Structure
-```
-Dana_Compiler/
-│-- src/
-│   ├── lexer.l       # Flex file for lexical analysis
-│   ├── parser.y      # Bison file for syntax analysis
-│   ├── lexer.h       # Header file for lexer-parser integration
-│   ├── Makefile      # Build automation file
-│-- Dana/             # Directory containing .dana test files
-|-- archive/          # Directory containing older versions of lexer and parser
-│-- README.md         # Project documentation
-```
-
 ## Building the Compiler
 Navigate to root directory and run:
 ```sh
@@ -51,4 +38,5 @@ Ensure you have the following tools installed:
 - `llvm` (for code generation)
 
 ## Author
+
 Developed by [amark-23](https://github.com/amark-23) | [gtiso](https://github.com/gtiso).
