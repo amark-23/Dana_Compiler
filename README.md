@@ -23,15 +23,14 @@ Dana_Compiler/
 ```
 
 ## Building the Compiler
-Navigate to the `src/` directory and run:
+Navigate to root directory and run:
 ```sh
-cd src
 make
 ```
 This will generate the necessary files, compile the lexer and parser, and create the `dana` executable.
 
 ## Running Tests
-To test the compiler using the `.dana` files located in the `Dana/` directory, run:
+To test the compiler using the `.dana` files located in the submodule's directory, run:
 ```sh
 make test
 ```
@@ -49,6 +48,7 @@ Ensure you have the following tools installed:
 - `flex` (for lexical analysis)
 - `bison` (for syntax analysis)
 - `gcc` (for compilation)
+- `llvm` (for code generation)
 
 ## Author
 Developed by [amark-23](https://github.com/amark-23) | [gtiso](https://github.com/gtiso).
