@@ -35,8 +35,9 @@ Ensure you have the following tools installed:
 - `flex` (for lexical analysis)
 - `bison` (for syntax analysis)
 - `gcc` (for compilation)
-- `llvm` (for code generation)
+- `llvm-config` (for code generation, version: 18.1.3)
 
 ## Author
 
 Developed by [amark-23](https://github.com/amark-23) | [gtiso](https://github.com/gtiso).
+
