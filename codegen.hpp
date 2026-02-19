@@ -39,6 +39,8 @@ public:
     std::map<std::string, llvm::Function*> builtinFunctions;
     std::stack<std::pair<std::string, llvm::BasicBlock*>> breakBlockStack;
     std::stack<std::pair<std::string, llvm::BasicBlock*>> continueBlockStack;
+    std::vector<std::string> functionNameStack;  // Track nested function names
+    std::vector<std::map<std::string, std::string>> localFunctionsStack;  // Map simple names to qualified names
 
 public:
     llvm::LLVMContext TheContext;
@@ -59,6 +61,12 @@ public:
 
     void enterScope();
     void exitScope();
+
+    void enterFunctionScope(const std::string& fnName);
+    void exitFunctionScope();
+    std::string getQualifiedFunctionName(const std::string& fnName);
+    void registerLocalFunction(const std::string& fnName, const std::string& qualifiedName);
+    std::string lookupLocalFunction(const std::string& fnName);
 
     llvm::Value* findVariable(const std::string& name);
     void setVariable(const std::string& name, llvm::Value* value);

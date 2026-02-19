@@ -11,11 +11,12 @@
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/MC/TargetRegistry.h"
-#include "llvm/TargetParser/Host.h"
+#include "llvm/Support/Host.h"
 #include "llvm/Support/CodeGen.h" 
 #include "llvm/ADT/SmallString.h"
 #include "llvm/IR/GlobalVariable.h"
 #include "llvm/IR/Constants.h"
+#include "llvm/IR/Verifier.h" 
 
 static std::string process_escapes(const std::string& raw_str) {
     std::string result = "";
@@ -199,6 +200,43 @@ void CodegenContext::exitScope() {
     }
 }
 
+void CodegenContext::enterFunctionScope(const std::string& fnName) {
+    functionNameStack.push_back(fnName);
+}
+
+void CodegenContext::exitFunctionScope() {
+    if (!functionNameStack.empty()) {
+        functionNameStack.pop_back();
+    } else {
+        logError("exitFunctionScope called on empty function name stack");
+    }
+}
+
+std::string CodegenContext::getQualifiedFunctionName(const std::string& fnName) {
+    if (functionNameStack.empty()) {
+        return fnName;
+    }
+    std::string qualified = fnName;
+    for (const auto& scope : functionNameStack) {
+        qualified = scope + "." + qualified;
+    }
+    return qualified;
+}
+
+void CodegenContext::registerLocalFunction(const std::string& fnName, const std::string& qualifiedName) {
+    if (localFunctionsStack.empty()) {
+        localFunctionsStack.push_back(std::map<std::string, std::string>());
+    }
+    localFunctionsStack.back()[fnName] = qualifiedName;
+}
+
+std::string CodegenContext::lookupLocalFunction(const std::string& fnName) {
+    for (auto it = localFunctionsStack.rbegin(); it != localFunctionsStack.rend(); ++it) {
+        if (it->count(fnName)) return (*it)[fnName];
+    }
+    return fnName;  
+}
+
 void CodegenContext::clearNamedValues() {
     namedValuesStack.clear();
     enterScope();
@@ -248,14 +286,14 @@ void CodegenContext::printFinal(std::ostream& os) {
     auto CPU = "generic";
     auto Features = "";
     llvm::TargetOptions opt;
-    auto RM = std::optional<llvm::Reloc::Model>();
+    auto RM = llvm::Optional<llvm::Reloc::Model>();
     auto TheTargetMachine = Target->createTargetMachine(TargetTriple, CPU, Features, opt, RM);
     TheModule->setDataLayout(TheTargetMachine->createDataLayout());
     TheModule->setTargetTriple(TargetTriple);
     llvm::SmallString<0> AsmStrVec;
     llvm::raw_svector_ostream asm_ros(AsmStrVec); 
     llvm::legacy::PassManager pass;
-    if (TheTargetMachine->addPassesToEmitFile(pass, asm_ros, nullptr, llvm::CodeGenFileType::AssemblyFile)) throw std::runtime_error("TargetMachine can't emit assembly file");
+    if (TheTargetMachine->addPassesToEmitFile(pass, asm_ros, nullptr, llvm::CGFT_AssemblyFile)) throw std::runtime_error("TargetMachine can't emit assembly file");
     pass.run(*TheModule);
     os << asm_ros.str().str();
 }
@@ -273,6 +311,9 @@ llvm::Value* fdefNode::codegen(CodegenContext& context) {
     std::string fnName = hdr->iden->name;
     bool isMain = (this == context.MainFunctionNode);
     if (isMain) fnName = "main";
+    else {
+        fnName = context.getQualifiedFunctionName(fnName);
+    }
 
     llvm::Function* TheFunction = context.TheModule->getFunction(fnName);
     if (!TheFunction) {
@@ -283,15 +324,12 @@ llvm::Value* fdefNode::codegen(CodegenContext& context) {
                 if (p->names) {
                     llvm::Type* paramT = context.getLLVMType(p->types);
                     if (paramT->isArrayTy()) {
-                        // It's an array. Get its base type and make a pointer.
                         llvm::Type* baseT = paramT;
-                        while(baseT->isArrayTy()) {
-                            baseT = baseT->getArrayElementType();
-                        }
+                        baseT = baseT->getArrayElementType();
                         paramT = baseT->getPointerTo();
                     }
                     for (size_t i = 0; i < p->names->size(); ++i) {
-                        ParamTypes.push_back(context.getLLVMType(p->types));
+                        ParamTypes.push_back(paramT); 
                     }
                 }
                 p = p->tail;
@@ -305,25 +343,42 @@ llvm::Value* fdefNode::codegen(CodegenContext& context) {
         llvm::FunctionType* FT = llvm::FunctionType::get(retType, ParamTypes, false);
         TheFunction = llvm::Function::Create(FT, llvm::Function::ExternalLinkage, fnName, context.TheModule.get());
     }
+    
+    if (!TheFunction->empty()) {
+        return context.logError("Function " + fnName + " is already defined.");
+    }
+
     llvm::BasicBlock* EntryBB = llvm::BasicBlock::Create(context.TheContext, "entry", TheFunction);
     llvm::Function* OldFunction = context.currentFunction;
     context.currentFunction = TheFunction;
-    context.enterScope(); 
+    context.enterScope();
+    
+    if (!isMain) {
+        context.registerLocalFunction(hdr->iden->name, fnName);
+        context.enterFunctionScope(hdr->iden->name);
+        context.localFunctionsStack.push_back(std::map<std::string, std::string>());
+    }
     context.Builder.SetInsertPoint(EntryBB);
+    
     if (hdr->params) {
         paramNode* p = hdr->params;
         auto arg_it = TheFunction->arg_begin();
         while(p) {
             if (p->names) {
+                llvm::Type* paramT = context.getLLVMType(p->types);
+                if (paramT->isArrayTy()) {
+                    llvm::Type* baseT = paramT;
+                    baseT = baseT->getArrayElementType();
+                    paramT = baseT->getPointerTo();
+                }
+
                 for (const auto& name : *(p->names)) {
                     if (arg_it == TheFunction->arg_end())
                         return context.logError("Too few arguments provided to function " + fnName);
                     
                     llvm::Value* arg = arg_it++;
                     arg->setName(name);
-
-                    llvm::Type* type = context.getLLVMType(p->types);
-                    llvm::AllocaInst* Alloca = context.createEntryBlockAlloca(type, name);
+                    llvm::AllocaInst* Alloca = context.createEntryBlockAlloca(paramT, name);
                     context.Builder.CreateStore(arg, Alloca);
                 }
             }
@@ -337,6 +392,12 @@ llvm::Value* fdefNode::codegen(CodegenContext& context) {
         if (isMain) context.Builder.CreateRet(llvm::ConstantInt::get(context.TheContext, llvm::APInt(32, 0, true)));
         else if (retType->isVoidTy()) context.Builder.CreateRetVoid();
         else context.Builder.CreateRet(llvm::Constant::getNullValue(retType));
+    }
+    if (!isMain) {
+        if (!context.localFunctionsStack.empty()) {
+            context.localFunctionsStack.pop_back();
+        }
+        context.exitFunctionScope(); 
     }
     context.exitScope(); 
     context.currentFunction = OldFunction;
@@ -605,7 +666,10 @@ llvm::Value* exprNode::codegen(CodegenContext& context) {
 
 
 llvm::Value* fcallNode::codegen(CodegenContext& context) {
-    llvm::Function* CalleeF = context.TheModule->getFunction(iden->name);
+    std::string lookupName = context.lookupLocalFunction(iden->name);
+    llvm::Function* CalleeF = context.TheModule->getFunction(lookupName);
+    
+    if (!CalleeF) CalleeF = context.TheModule->getFunction(iden->name);
     if (!CalleeF) CalleeF = context.getBuiltin(iden->name);
     if (!CalleeF) return context.logError("Unknown function referenced: " + iden->name);
     std::vector<llvm::Value*> ArgsV;
@@ -615,13 +679,31 @@ llvm::Value* fcallNode::codegen(CodegenContext& context) {
         int i = 0;
         for (auto* argExpr : *args) {
             llvm::Type* ParamType = FType->getParamType(i++);
+            llvm::Value* ArgVal = nullptr;
+
             if (ParamType->isPointerTy()) {
-                if (argExpr->lval) ArgsV.push_back(argExpr->lval->codegen_ptr(context));
-                else return context.logError("Expression is not an l-value, cannot pass as ref");
+                if (argExpr->lval) {
+                   llvm::Value* ptr = argExpr->lval->codegen_ptr(context);
+                   if (ptr && ptr->getType()->getPointerElementType()->isArrayTy()) {
+                       std::vector<llvm::Value*> indices;
+                       indices.push_back(llvm::ConstantInt::get(context.TheContext, llvm::APInt(32, 0)));
+                       indices.push_back(llvm::ConstantInt::get(context.TheContext, llvm::APInt(32, 0)));
+                       ArgVal = context.Builder.CreateGEP(ptr->getType()->getPointerElementType(), ptr, indices, "arraydecay");
+                   } else {
+                       ArgVal = ptr;
+                   }
+                } else {
+                    return context.logError("Expression is not an l-value, cannot pass as ref");
+                }
+
+                if (ArgVal && ArgVal->getType() != ParamType) {
+                     ArgVal = context.Builder.CreateBitCast(ArgVal, ParamType, "argcast");
+                }
             } else {
-                ArgsV.push_back(argExpr->codegen(context));
+                ArgVal = argExpr->codegen(context);
             }
-            if (!ArgsV.back()) return nullptr;
+            if (!ArgVal) return nullptr;
+            ArgsV.push_back(ArgVal);
         }
     }
     if (FType->getReturnType()->isVoidTy()) {
@@ -648,28 +730,24 @@ llvm::Value* lvalNode::codegen(CodegenContext& context) {
         loadType = gv->getValueType();
     } else if (auto* arg = llvm::dyn_cast<llvm::Argument>(ptr)) {
         if (auto *PT = llvm::dyn_cast<llvm::PointerType>(arg->getType()))
-            loadType = PT->getArrayElementType();
+            loadType = PT->getElementType();
         else
             loadType = arg->getType();
     } else {
-        return context.logError("lval::codegen: ptr is not Alloca, GEP, Argument, or GlobalVariable");
+        if (ptr->getType()->isPointerTy()) {
+            loadType = ptr->getType()->getPointerElementType();
+        } else {
+            return context.logError("lval::codegen: ptr is not a valid pointer type");
+        }
     }
+
     if (loadType == nullptr) return context.logError("Could not determine type to load from lval");
+    
     if (loadType->isArrayTy()) {
         std::vector<llvm::Value*> IdxList;
         IdxList.push_back(llvm::ConstantInt::get(context.TheContext, llvm::APInt(32, 0)));
         IdxList.push_back(llvm::ConstantInt::get(context.TheContext, llvm::APInt(32, 0)));
-        llvm::Type* ptrType = nullptr;
-        if (auto* alloca = llvm::dyn_cast<llvm::AllocaInst>(ptr)) ptrType = alloca->getAllocatedType();
-        else if (auto* gep = llvm::dyn_cast<llvm::GetElementPtrInst>(ptr)) ptrType = gep->getSourceElementType();
-        else if (auto* gv = llvm::dyn_cast<llvm::GlobalVariable>(ptr)) ptrType = gv->getValueType();
-        else if (auto* arg = llvm::dyn_cast<llvm::Argument>(ptr)) {
-            if (auto *PT = llvm::dyn_cast<llvm::PointerType>(arg->getType()))
-                ptrType = PT->getArrayElementType();
-            else
-                ptrType = arg->getType();
-        } else ptrType = loadType;
-        return context.Builder.CreateGEP(ptrType, ptr, IdxList, "arraydecayptr");
+        return context.Builder.CreateGEP(loadType, ptr, IdxList, "arraydecayptr");
     }
     return context.Builder.CreateLoad(loadType, ptr, "loadtmp");
 }
@@ -683,51 +761,49 @@ llvm::Value* lvalNode::codegen_ptr(CodegenContext& context) {
     }
     llvm::Value* Ptr = context.findVariable(ident->name);
     if (!Ptr) return context.logError("lval base variable not found: " + ident->name);
-    if (!ind || ind->empty()) {
-        if (auto* alloca = llvm::dyn_cast<llvm::AllocaInst>(Ptr)) {
-            if (alloca->getAllocatedType()->isPointerTy()) {
-                return context.Builder.CreateLoad(alloca->getAllocatedType(), Ptr, "loadrefptr");
-            }
+
+    if (auto* alloca = llvm::dyn_cast<llvm::AllocaInst>(Ptr)) {
+        if (alloca->getAllocatedType()->isPointerTy()) {
+            Ptr = context.Builder.CreateLoad(alloca->getAllocatedType(), Ptr, "loadrefptr");
         }
     }
-    
+
+    // 2. Determine base types
+    llvm::Type* gepBaseType = nullptr;
+    if (auto *PT = llvm::dyn_cast<llvm::PointerType>(Ptr->getType())) {
+        gepBaseType = PT->getElementType();
+    } else {
+        return context.logError("Variable is not a pointer/address");
+    }
+
     if (!ind || ind->empty()) return Ptr;
 
     std::vector<llvm::Value*> IdxList;
-    llvm::Type* gepBaseType = nullptr;
+    llvm::Type* currentType = Ptr->getType(); 
 
-    if (auto* alloca = llvm::dyn_cast<llvm::AllocaInst>(Ptr)) {
-        gepBaseType = alloca->getAllocatedType();
-        IdxList.push_back(llvm::ConstantInt::get(context.TheContext, llvm::APInt(32, 0)));
-    } else if (auto* gv = llvm::dyn_cast<llvm::GlobalVariable>(Ptr)) {
-        gepBaseType = gv->getValueType();
-        IdxList.push_back(llvm::ConstantInt::get(context.TheContext, llvm::APInt(32, 0)));
-    } else if (auto* arg = llvm::dyn_cast<llvm::Argument>(Ptr)) {
-        if (auto *PT = llvm::dyn_cast<llvm::PointerType>(arg->getType()))
-            gepBaseType = PT->getArrayElementType();
-        else
-            return context.logError("GEP on argument with non-pointer type");
-    } else {
-        return context.logError("GEP on unhandled pointer type (not Alloca, GlobalVariable or Arg)");
+    bool isArrayAlloca = false;
+
+    if (auto* AI = llvm::dyn_cast<llvm::AllocaInst>(context.findVariable(ident->name))) {
+        if (AI->getAllocatedType()->isArrayTy()) isArrayAlloca = true;
     }
-    llvm::Type* currentType = gepBaseType;
+    else if (auto* GV = llvm::dyn_cast<llvm::GlobalVariable>(context.findVariable(ident->name))) {
+        if (GV->getValueType()->isArrayTy()) isArrayAlloca = true;
+    }
+
+    if (isArrayAlloca) {
+        IdxList.push_back(llvm::ConstantInt::get(context.TheContext, llvm::APInt(32, 0)));
+        currentType = gepBaseType; 
+    }
+
     for (auto* idxExpr : *ind) {
-        if (currentType == nullptr) return context.logError("Array indexing on non-array type: " + ident->name);
-        if (currentType->isArrayTy()) {
+        if (currentType->isPointerTy()) {
+            IdxList.push_back(idxExpr->codegen(context));
+            currentType = currentType->getPointerElementType();
+        } else if (currentType->isArrayTy()) {
             IdxList.push_back(idxExpr->codegen(context));
             currentType = currentType->getArrayElementType();
-        } else if (currentType->isPointerTy()) {
-            IdxList.push_back(idxExpr->codegen(context));
-            if (currentType->isArrayTy()) {
-                currentType = currentType->getArrayElementType();
-            } else if (currentType->isPointerTy()) {
-                if (auto *PT = llvm::dyn_cast<llvm::PointerType>(currentType))
-                    currentType = PT->getArrayElementType();
-                else
-                    return context.logError("Pointer does not have element type");
-            }
         }
-         else {
+        else {
             return context.logError("Too many indices for array: " + ident->name);
         }
     }

@@ -1,0 +1,1451 @@
+
+============================
+ 	Running SUNNY DAY tests
+============================
+Compiling strrev ... [91mFAILED[0m
+Codegen Error: Too many indices for array: s
+Codegen Error: RHS of assignment failed to generate code
+Instruction does not dominate all uses!
+  %r = alloca [32 x i8], align 1
+  %geptmp5 = getelementptr [32 x i8], [32 x i8]* %r, i32 0, i32 %loadtmp4
+Instruction does not dominate all uses!
+  %r = alloca [32 x i8], align 1
+  %geptmp = getelementptr [32 x i8], [32 x i8]* %r, i32 0, i32 %loadtmp3
+Invalid IR in function reverse
+define void @reverse(i8* %s) {
+entry:
+  %l = alloca i32, align 4
+  %i = alloca i32, align 4
+  %s1 = alloca i8*, align 8
+  store i8* %s, i8** %s1, align 8
+  %loadrefptr = load i8*, i8** %s1, align 8
+  %calltmp = call i32 @dana_strlen(i8* %loadrefptr)
+  store i32 %calltmp, i32* %l, align 4
+  store i32 0, i32* %i, align 4
+  br label %_header
+
+_header:                                          ; preds = %ifcont, %entry
+  br label %_body
+
+_body:                                            ; preds = %_header
+  %loadtmp = load i32, i32* %i, align 4
+  %loadtmp2 = load i32, i32* %l, align 4
+  %lttmp = icmp slt i32 %loadtmp, %loadtmp2
+  br i1 %lttmp, label %then, label %else
+
+_after:                                           ; preds = %else
+  %loadtmp4 = load i32, i32* %i, align 4
+  %geptmp5 = getelementptr [32 x i8], [32 x i8]* %r, i32 0, i32 %loadtmp4
+  store i8 0, i8* %geptmp5, align 1
+  ret void
+
+then:                                             ; preds = %_body
+  %loadtmp3 = load i32, i32* %i, align 4
+  %geptmp = getelementptr [32 x i8], [32 x i8]* %r, i32 0, i32 %loadtmp3
+  %ptrload = load i8*, i8** %s1, align 8
+  br label %ifcont
+
+else:                                             ; preds = %_body
+  br label %_after
+
+ifcont:                                           ; preds = %then
+  br label %_header
+}
+Call parameter type does not match function signature!
+  %r = alloca [32 x i8], align 1
+ i8*  call void @writeString([32 x i8]* %r)
+Invalid IR in function main
+define i32 @main() {
+entry:
+  %r = alloca [32 x i8], align 1
+  call void @reverse(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @0, i32 0, i32 0))
+  call void @writeString([32 x i8]* %r)
+  ret i32 0
+}
+Call parameter type does not match function signature!
+  %r = alloca [32 x i8], align 1
+ i8*  call void @writeString([32 x i8]* %r)
+Instruction does not dominate all uses!
+  %r = alloca [32 x i8], align 1
+  %geptmp5 = getelementptr [32 x i8], [32 x i8]* %r, i32 0, i32 %loadtmp4
+Instruction does not dominate all uses!
+  %r = alloca [32 x i8], align 1
+  %geptmp = getelementptr [32 x i8], [32 x i8]* %r, i32 0, i32 %loadtmp3
+[1;31mLLVM Module verification failed!
+[0m
+Compiling calculator ... [91mFAILED[0m
+Codegen Error: Too many indices for array: s
+Codegen Error: RHS of assignment failed to generate code
+Call parameter type does not match function signature!
+  %buf = alloca [256 x i8], align 1
+ i8*  call void @readString(i32 256, [256 x i8]* %buf)
+Call parameter type does not match function signature!
+  %buf = alloca [256 x i8], align 1
+ i8*  %calltmp = call i32 @dana_strlen([256 x i8]* %buf)
+Call parameter type does not match function signature!
+  %buf = alloca [256 x i8], align 1
+ i8*  %calltmp50 = call i32 @string_to_int([256 x i8]* %buf, i32 %loadtmp48, i32 %loadtmp49)
+Call parameter type does not match function signature!
+  %buf = alloca [256 x i8], align 1
+ i8*  %calltmp132 = call i32 @string_to_int([256 x i8]* %buf, i32 %loadtmp130, i32 %loadtmp131)
+Invalid IR in function main
+define i32 @main() {
+entry:
+  %op = alloca i8, align 1
+  %b = alloca i32, align 4
+  %a = alloca i32, align 4
+  %p_end = alloca i32, align 4
+  %start = alloca i32, align 4
+  %len = alloca i32, align 4
+  %idx = alloca i32, align 4
+  %buf = alloca [256 x i8], align 1
+  br label %lines_header
+
+lines_header:                                     ; preds = %ifcont137, %then127, %then82, %then76, %then54, %then45, %then4, %entry
+  br label %lines_body
+
+lines_body:                                       ; preds = %lines_header
+  %geptmp = getelementptr [256 x i8], [256 x i8]* %buf, i32 0, i32 0
+  store i8 0, i8* %geptmp, align 1
+  call void @readString(i32 256, [256 x i8]* %buf)
+  %calltmp = call i32 @dana_strlen([256 x i8]* %buf)
+  store i32 %calltmp, i32* %len, align 4
+  %loadtmp = load i32, i32* %len, align 4
+  %eqtmp = icmp eq i32 %loadtmp, 0
+  br i1 %eqtmp, label %then, label %ifcont
+
+lines_after:                                      ; preds = %then
+  ret i32 0
+
+then:                                             ; preds = %lines_body
+  br label %lines_after
+
+ifcont:                                           ; preds = %lines_body
+  store i32 0, i32* %idx, align 4
+  br label %a_start_header
+
+a_start_header:                                   ; preds = %ifcont5, %ifcont
+  br label %a_start_body
+
+a_start_body:                                     ; preds = %a_start_header
+  %loadtmp1 = load i32, i32* %idx, align 4
+  %loadtmp2 = load i32, i32* %len, align 4
+  %eqtmp3 = icmp eq i32 %loadtmp1, %loadtmp2
+  br i1 %eqtmp3, label %then4, label %else
+
+a_start_after:                                    ; preds = %then11
+  %loadtmp15 = load i32, i32* %idx, align 4
+  store i32 %loadtmp15, i32* %start, align 4
+  br label %a_end_header
+
+then4:                                            ; preds = %a_start_body
+  call void @writeString(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @0, i32 0, i32 0))
+  br label %lines_header
+
+else:                                             ; preds = %a_start_body
+  %loadtmp6 = load i32, i32* %idx, align 4
+  %geptmp7 = getelementptr [256 x i8], [256 x i8]* %buf, i32 0, i32 %loadtmp6
+  %loadtmp8 = load i8, i8* %geptmp7, align 1
+  %calltmp9 = call i8 @is_digit(i8 %loadtmp8)
+  %promL = zext i8 %calltmp9 to i32
+  %eqtmp10 = icmp eq i32 %promL, 1
+  br i1 %eqtmp10, label %then11, label %ifcont13
+
+ifcont5:                                          ; preds = %ifcont13
+  %loadtmp14 = load i32, i32* %idx, align 4
+  %addtmp = add i32 %loadtmp14, 1
+  store i32 %addtmp, i32* %idx, align 4
+  br label %a_start_header
+
+then11:                                           ; preds = %else
+  br label %a_start_after
+
+ifcont13:                                         ; preds = %else
+  br label %ifcont5
+
+a_end_header:                                     ; preds = %ifcont40, %a_start_after
+  br label %a_end_body
+
+a_end_body:                                       ; preds = %a_end_header
+  %loadtmp16 = load i32, i32* %idx, align 4
+  %loadtmp17 = load i32, i32* %len, align 4
+  %eqtmp18 = icmp eq i32 %loadtmp16, %loadtmp17
+  br i1 %eqtmp18, label %then19, label %else20
+
+a_end_after:                                      ; preds = %then38, %then29, %then19
+  %loadtmp42 = load i32, i32* %start, align 4
+  %loadtmp43 = load i32, i32* %p_end, align 4
+  %eqtmp44 = icmp eq i32 %loadtmp42, %loadtmp43
+  br i1 %eqtmp44, label %then45, label %ifcont47
+
+then19:                                           ; preds = %a_end_body
+  %loadtmp22 = load i32, i32* %idx, align 4
+  store i32 %loadtmp22, i32* %p_end, align 4
+  br label %a_end_after
+
+else20:                                           ; preds = %a_end_body
+  %loadtmp23 = load i32, i32* %idx, align 4
+  %geptmp24 = getelementptr [256 x i8], [256 x i8]* %buf, i32 0, i32 %loadtmp23
+  %loadtmp25 = load i8, i8* %geptmp24, align 1
+  %calltmp26 = call i8 @is_digit(i8 %loadtmp25)
+  %promL27 = zext i8 %calltmp26 to i32
+  %eqtmp28 = icmp eq i32 %promL27, 1
+  %nottmp = xor i1 %eqtmp28, true
+  br i1 %nottmp, label %then29, label %ifcont31
+
+ifcont21:                                         ; preds = %ifcont31
+  %loadtmp33 = load i32, i32* %idx, align 4
+  %addtmp34 = add i32 %loadtmp33, 1
+  store i32 %addtmp34, i32* %idx, align 4
+  %loadtmp35 = load i32, i32* %idx, align 4
+  %loadtmp36 = load i32, i32* %len, align 4
+  %eqtmp37 = icmp eq i32 %loadtmp35, %loadtmp36
+  br i1 %eqtmp37, label %then38, label %ifcont40
+
+then29:                                           ; preds = %else20
+  %loadtmp32 = load i32, i32* %idx, align 4
+  store i32 %loadtmp32, i32* %p_end, align 4
+  br label %a_end_after
+
+ifcont31:                                         ; preds = %else20
+  br label %ifcont21
+
+then38:                                           ; preds = %ifcont21
+  %loadtmp41 = load i32, i32* %idx, align 4
+  store i32 %loadtmp41, i32* %p_end, align 4
+  br label %a_end_after
+
+ifcont40:                                         ; preds = %ifcont21
+  br label %a_end_header
+
+then45:                                           ; preds = %a_end_after
+  call void @writeString(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @1, i32 0, i32 0))
+  br label %lines_header
+
+ifcont47:                                         ; preds = %a_end_after
+  %loadtmp48 = load i32, i32* %start, align 4
+  %loadtmp49 = load i32, i32* %p_end, align 4
+  %calltmp50 = call i32 @string_to_int([256 x i8]* %buf, i32 %loadtmp48, i32 %loadtmp49)
+  store i32 %calltmp50, i32* %a, align 4
+  br label %op_detect_header
+
+op_detect_header:                                 ; preds = %ifcont56, %ifcont47
+  br label %op_detect_body
+
+op_detect_body:                                   ; preds = %op_detect_header
+  %loadtmp51 = load i32, i32* %idx, align 4
+  %loadtmp52 = load i32, i32* %len, align 4
+  %eqtmp53 = icmp eq i32 %loadtmp51, %loadtmp52
+  br i1 %eqtmp53, label %then54, label %else55
+
+op_detect_after:                                  ; preds = %then63
+  %loadtmp73 = load i32, i32* %idx, align 4
+  %loadtmp74 = load i32, i32* %start, align 4
+  %eqtmp75 = icmp eq i32 %loadtmp73, %loadtmp74
+  br i1 %eqtmp75, label %then76, label %ifcont78
+
+then54:                                           ; preds = %op_detect_body
+  call void @writeString(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @2, i32 0, i32 0))
+  br label %lines_header
+
+else55:                                           ; preds = %op_detect_body
+  %loadtmp57 = load i32, i32* %idx, align 4
+  %geptmp58 = getelementptr [256 x i8], [256 x i8]* %buf, i32 0, i32 %loadtmp57
+  %loadtmp59 = load i8, i8* %geptmp58, align 1
+  %calltmp60 = call i8 @is_operator(i8 %loadtmp59)
+  %promL61 = zext i8 %calltmp60 to i32
+  %eqtmp62 = icmp eq i32 %promL61, 1
+  br i1 %eqtmp62, label %then63, label %ifcont65
+
+ifcont56:                                         ; preds = %ifcont65
+  %loadtmp71 = load i32, i32* %idx, align 4
+  %addtmp72 = add i32 %loadtmp71, 1
+  store i32 %addtmp72, i32* %idx, align 4
+  br label %op_detect_header
+
+then63:                                           ; preds = %else55
+  %loadtmp66 = load i32, i32* %idx, align 4
+  %geptmp67 = getelementptr [256 x i8], [256 x i8]* %buf, i32 0, i32 %loadtmp66
+  %loadtmp68 = load i8, i8* %geptmp67, align 1
+  store i8 %loadtmp68, i8* %op, align 1
+  %loadtmp69 = load i32, i32* %idx, align 4
+  %addtmp70 = add i32 %loadtmp69, 1
+  store i32 %addtmp70, i32* %idx, align 4
+  br label %op_detect_after
+
+ifcont65:                                         ; preds = %else55
+  br label %ifcont56
+
+then76:                                           ; preds = %op_detect_after
+  call void @writeString(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @3, i32 0, i32 0))
+  br label %lines_header
+
+ifcont78:                                         ; preds = %op_detect_after
+  br label %b_start_header
+
+b_start_header:                                   ; preds = %ifcont84, %ifcont78
+  br label %b_start_body
+
+b_start_body:                                     ; preds = %b_start_header
+  %loadtmp79 = load i32, i32* %idx, align 4
+  %loadtmp80 = load i32, i32* %len, align 4
+  %eqtmp81 = icmp eq i32 %loadtmp79, %loadtmp80
+  br i1 %eqtmp81, label %then82, label %else83
+
+b_start_after:                                    ; preds = %then91
+  %loadtmp96 = load i32, i32* %idx, align 4
+  store i32 %loadtmp96, i32* %start, align 4
+  br label %b_end_header
+
+then82:                                           ; preds = %b_start_body
+  call void @writeString(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @4, i32 0, i32 0))
+  br label %lines_header
+
+else83:                                           ; preds = %b_start_body
+  %loadtmp85 = load i32, i32* %idx, align 4
+  %geptmp86 = getelementptr [256 x i8], [256 x i8]* %buf, i32 0, i32 %loadtmp85
+  %loadtmp87 = load i8, i8* %geptmp86, align 1
+  %calltmp88 = call i8 @is_digit(i8 %loadtmp87)
+  %promL89 = zext i8 %calltmp88 to i32
+  %eqtmp90 = icmp eq i32 %promL89, 1
+  br i1 %eqtmp90, label %then91, label %ifcont93
+
+ifcont84:                                         ; preds = %ifcont93
+  %loadtmp94 = load i32, i32* %idx, align 4
+  %addtmp95 = add i32 %loadtmp94, 1
+  store i32 %addtmp95, i32* %idx, align 4
+  br label %b_start_header
+
+then91:                                           ; preds = %else83
+  br label %b_start_after
+
+ifcont93:                                         ; preds = %else83
+  br label %ifcont84
+
+b_end_header:                                     ; preds = %ifcont122, %b_start_after
+  br label %b_end_body
+
+b_end_body:                                       ; preds = %b_end_header
+  %loadtmp97 = load i32, i32* %idx, align 4
+  %loadtmp98 = load i32, i32* %len, align 4
+  %eqtmp99 = icmp eq i32 %loadtmp97, %loadtmp98
+  br i1 %eqtmp99, label %then100, label %else101
+
+b_end_after:                                      ; preds = %then120, %then111, %then100
+  %loadtmp124 = load i32, i32* %start, align 4
+  %loadtmp125 = load i32, i32* %p_end, align 4
+  %eqtmp126 = icmp eq i32 %loadtmp124, %loadtmp125
+  br i1 %eqtmp126, label %then127, label %ifcont129
+
+then100:                                          ; preds = %b_end_body
+  %loadtmp103 = load i32, i32* %idx, align 4
+  store i32 %loadtmp103, i32* %p_end, align 4
+  br label %b_end_after
+
+else101:                                          ; preds = %b_end_body
+  %loadtmp104 = load i32, i32* %idx, align 4
+  %geptmp105 = getelementptr [256 x i8], [256 x i8]* %buf, i32 0, i32 %loadtmp104
+  %loadtmp106 = load i8, i8* %geptmp105, align 1
+  %calltmp107 = call i8 @is_digit(i8 %loadtmp106)
+  %promL108 = zext i8 %calltmp107 to i32
+  %eqtmp109 = icmp eq i32 %promL108, 1
+  %nottmp110 = xor i1 %eqtmp109, true
+  br i1 %nottmp110, label %then111, label %ifcont113
+
+ifcont102:                                        ; preds = %ifcont113
+  %loadtmp115 = load i32, i32* %idx, align 4
+  %addtmp116 = add i32 %loadtmp115, 1
+  store i32 %addtmp116, i32* %idx, align 4
+  %loadtmp117 = load i32, i32* %idx, align 4
+  %loadtmp118 = load i32, i32* %len, align 4
+  %eqtmp119 = icmp eq i32 %loadtmp117, %loadtmp118
+  br i1 %eqtmp119, label %then120, label %ifcont122
+
+then111:                                          ; preds = %else101
+  %loadtmp114 = load i32, i32* %idx, align 4
+  store i32 %loadtmp114, i32* %p_end, align 4
+  br label %b_end_after
+
+ifcont113:                                        ; preds = %else101
+  br label %ifcont102
+
+then120:                                          ; preds = %ifcont102
+  %loadtmp123 = load i32, i32* %idx, align 4
+  store i32 %loadtmp123, i32* %p_end, align 4
+  br label %b_end_after
+
+ifcont122:                                        ; preds = %ifcont102
+  br label %b_end_header
+
+then127:                                          ; preds = %b_end_after
+  call void @writeString(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @5, i32 0, i32 0))
+  br label %lines_header
+
+ifcont129:                                        ; preds = %b_end_after
+  %loadtmp130 = load i32, i32* %start, align 4
+  %loadtmp131 = load i32, i32* %p_end, align 4
+  %calltmp132 = call i32 @string_to_int([256 x i8]* %buf, i32 %loadtmp130, i32 %loadtmp131)
+  store i32 %calltmp132, i32* %b, align 4
+  %loadtmp133 = load i8, i8* %op, align 1
+  %eqtmp134 = icmp eq i8 %loadtmp133, 43
+  br i1 %eqtmp134, label %then135, label %else136
+
+then135:                                          ; preds = %ifcont129
+  %loadtmp138 = load i32, i32* %a, align 4
+  %loadtmp139 = load i32, i32* %b, align 4
+  %addtmp140 = add i32 %loadtmp138, %loadtmp139
+  call void @writeInteger(i32 %addtmp140)
+  br label %ifcont137
+
+else136:                                          ; preds = %ifcont129
+  %loadtmp141 = load i8, i8* %op, align 1
+  %eqtmp142 = icmp eq i8 %loadtmp141, 45
+  br i1 %eqtmp142, label %then143, label %else144
+
+ifcont137:                                        ; preds = %ifcont145, %then135
+  call void @writeString(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @8, i32 0, i32 0))
+  br label %lines_header
+
+then143:                                          ; preds = %else136
+  %loadtmp146 = load i32, i32* %a, align 4
+  %loadtmp147 = load i32, i32* %b, align 4
+  %subtmp = sub i32 %loadtmp146, %loadtmp147
+  call void @writeInteger(i32 %subtmp)
+  br label %ifcont145
+
+else144:                                          ; preds = %else136
+  %loadtmp148 = load i8, i8* %op, align 1
+  %eqtmp149 = icmp eq i8 %loadtmp148, 42
+  br i1 %eqtmp149, label %then150, label %else151
+
+ifcont145:                                        ; preds = %ifcont152, %then143
+  br label %ifcont137
+
+then150:                                          ; preds = %else144
+  %loadtmp153 = load i32, i32* %a, align 4
+  %loadtmp154 = load i32, i32* %b, align 4
+  %multmp = mul i32 %loadtmp153, %loadtmp154
+  call void @writeInteger(i32 %multmp)
+  br label %ifcont152
+
+else151:                                          ; preds = %else144
+  %loadtmp155 = load i8, i8* %op, align 1
+  %eqtmp156 = icmp eq i8 %loadtmp155, 47
+  br i1 %eqtmp156, label %then157, label %else158
+
+ifcont152:                                        ; preds = %ifcont159, %then150
+  br label %ifcont145
+
+then157:                                          ; preds = %else151
+  %loadtmp160 = load i32, i32* %b, align 4
+  %eqtmp161 = icmp eq i32 %loadtmp160, 0
+  br i1 %eqtmp161, label %then162, label %else163
+
+else158:                                          ; preds = %else151
+  call void @writeString(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @7, i32 0, i32 0))
+  br label %ifcont159
+
+ifcont159:                                        ; preds = %else158, %ifcont164
+  br label %ifcont152
+
+then162:                                          ; preds = %then157
+  call void @writeString(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @6, i32 0, i32 0))
+  br label %ifcont164
+
+else163:                                          ; preds = %then157
+  %loadtmp165 = load i32, i32* %a, align 4
+  %loadtmp166 = load i32, i32* %b, align 4
+  %divtmp = sdiv i32 %loadtmp165, %loadtmp166
+  call void @writeInteger(i32 %divtmp)
+  br label %ifcont164
+
+ifcont164:                                        ; preds = %else163, %then162
+  br label %ifcont159
+}
+Call parameter type does not match function signature!
+  %buf = alloca [256 x i8], align 1
+ i8*  call void @readString(i32 256, [256 x i8]* %buf)
+Call parameter type does not match function signature!
+  %buf = alloca [256 x i8], align 1
+ i8*  %calltmp = call i32 @dana_strlen([256 x i8]* %buf)
+Call parameter type does not match function signature!
+  %buf = alloca [256 x i8], align 1
+ i8*  %calltmp50 = call i32 @string_to_int([256 x i8]* %buf, i32 %loadtmp48, i32 %loadtmp49)
+Call parameter type does not match function signature!
+  %buf = alloca [256 x i8], align 1
+ i8*  %calltmp132 = call i32 @string_to_int([256 x i8]* %buf, i32 %loadtmp130, i32 %loadtmp131)
+[1;31mLLVM Module verification failed!
+[0m
+Compiling palindrome ... [91mFAILED[0m
+Codegen Error: Too many indices for array: s
+Codegen Error: Too many indices for array: s
+
+Compiling IntXor ... [91mFAILED[0m
+Codegen Error: Too many indices for array: N
+Codegen Error: LHS of assignment is not a valid l-value
+Codegen Error: Too many indices for array: N
+Codegen Error: RHS of assignment failed to generate code
+Codegen Error: Too many indices for array: X
+Codegen Error: LHS of assignment is not a valid l-value
+Call parameter type does not match function signature!
+  %A = alloca [15 x i32], align 4
+ i32*  call void @DecToBin(i32 %loadtmp, [15 x i32]* %A)
+Call parameter type does not match function signature!
+  %B = alloca [15 x i32], align 4
+ i32*  call void @DecToBin(i32 %loadtmp2, [15 x i32]* %B)
+Call parameter type does not match function signature!
+  %A = alloca [15 x i32], align 4
+ i32*  call void @XOR([15 x i32]* %A, [15 x i32]* %B, [15 x i32]* %X)
+Call parameter type does not match function signature!
+  %X = alloca [15 x i32], align 4
+ i32*  %calltmp3 = call i32 @BinToDec([15 x i32]* %X)
+Invalid IR in function main
+define i32 @main() {
+entry:
+  %X = alloca [15 x i32], align 4
+  %B = alloca [15 x i32], align 4
+  %A = alloca [15 x i32], align 4
+  %x = alloca i32, align 4
+  %b = alloca i32, align 4
+  %a = alloca i32, align 4
+  %calltmp = call i32 @readInteger()
+  store i32 %calltmp, i32* %a, align 4
+  %calltmp1 = call i32 @readInteger()
+  store i32 %calltmp1, i32* %b, align 4
+  %loadtmp = load i32, i32* %a, align 4
+  call void @DecToBin(i32 %loadtmp, [15 x i32]* %A)
+  %loadtmp2 = load i32, i32* %b, align 4
+  call void @DecToBin(i32 %loadtmp2, [15 x i32]* %B)
+  call void @XOR([15 x i32]* %A, [15 x i32]* %B, [15 x i32]* %X)
+  %calltmp3 = call i32 @BinToDec([15 x i32]* %X)
+  store i32 %calltmp3, i32* %x, align 4
+  %loadtmp4 = load i32, i32* %x, align 4
+  call void @writeInteger(i32 %loadtmp4)
+  call void @writeString(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @0, i32 0, i32 0))
+  ret i32 0
+}
+Call parameter type does not match function signature!
+  %A = alloca [15 x i32], align 4
+ i32*  call void @DecToBin(i32 %loadtmp, [15 x i32]* %A)
+Call parameter type does not match function signature!
+  %B = alloca [15 x i32], align 4
+ i32*  call void @DecToBin(i32 %loadtmp2, [15 x i32]* %B)
+Call parameter type does not match function signature!
+  %A = alloca [15 x i32], align 4
+ i32*  call void @XOR([15 x i32]* %A, [15 x i32]* %B, [15 x i32]* %X)
+Call parameter type does not match function signature!
+  %X = alloca [15 x i32], align 4
+ i32*  %calltmp3 = call i32 @BinToDec([15 x i32]* %X)
+[1;31mLLVM Module verification failed!
+[0m
+Compiling reverseNumber ... [92mOK[0m
+  Running reverseNumber ... [92mOK[0m
+[92mTest passed for ./compilersNTUA/dana/programs/reverseNumber.dana[0m
+Compiling matrix_mul ... [91mFAILED[0m
+Codegen Error: Too many indices for array: M
+Codegen Error: LHS of assignment is not a valid l-value
+Codegen Error: Too many indices for array: M
+Codegen Error: Too many indices for array: A
+Codegen Error: Too many indices for array: B
+Codegen Error: RHS of assignment failed to generate code
+Codegen Error: Too many indices for array: C
+Codegen Error: LHS of assignment is not a valid l-value
+Call parameter type does not match function signature!
+  %A = alloca [20 x [20 x i32]], align 4
+ [20 x i32]*  call void @readMatrix(i32 %loadtmp19, i32 %loadtmp20, [20 x [20 x i32]]* %A)
+Call parameter type does not match function signature!
+  %B = alloca [20 x [20 x i32]], align 4
+ [20 x i32]*  call void @readMatrix(i32 %loadtmp21, i32 %loadtmp22, [20 x [20 x i32]]* %B)
+Call parameter type does not match function signature!
+  %A = alloca [20 x [20 x i32]], align 4
+ [20 x i32]*  call void @matmul(i32 %loadtmp23, i32 %loadtmp24, i32 %loadtmp25, [20 x [20 x i32]]* %A, [20 x [20 x i32]]* %B, [20 x [20 x i32]]* %C)
+Call parameter type does not match function signature!
+  %C = alloca [20 x [20 x i32]], align 4
+ [20 x i32]*  call void @writeMatrix(i32 %loadtmp26, i32 %loadtmp27, [20 x [20 x i32]]* %C)
+Invalid IR in function main
+define i32 @main() {
+entry:
+  %C = alloca [20 x [20 x i32]], align 4
+  %B = alloca [20 x [20 x i32]], align 4
+  %A = alloca [20 x [20 x i32]], align 4
+  %p = alloca i32, align 4
+  %m = alloca i32, align 4
+  %n = alloca i32, align 4
+  %calltmp = call i32 @readInteger()
+  store i32 %calltmp, i32* %n, align 4
+  %calltmp1 = call i32 @readInteger()
+  store i32 %calltmp1, i32* %m, align 4
+  %calltmp2 = call i32 @readInteger()
+  store i32 %calltmp2, i32* %p, align 4
+  %loadtmp = load i32, i32* %n, align 4
+  %lttmp = icmp slt i32 %loadtmp, 1
+  %loadtmp3 = load i32, i32* %m, align 4
+  %lttmp4 = icmp slt i32 %loadtmp3, 1
+  %ortmp = or i1 %lttmp, %lttmp4
+  %loadtmp5 = load i32, i32* %p, align 4
+  %lttmp6 = icmp slt i32 %loadtmp5, 1
+  %ortmp7 = or i1 %ortmp, %lttmp6
+  br i1 %ortmp7, label %then, label %ifcont
+
+then:                                             ; preds = %entry
+  call void @writeString(i8* getelementptr inbounds ([40 x i8], [40 x i8]* @2, i32 0, i32 0))
+  ret i32 0
+
+ifcont:                                           ; preds = %entry
+  %loadtmp8 = load i32, i32* %n, align 4
+  %gttmp = icmp sgt i32 %loadtmp8, 20
+  br i1 %gttmp, label %then9, label %ifcont10
+
+then9:                                            ; preds = %ifcont
+  store i32 20, i32* %n, align 4
+  br label %ifcont10
+
+ifcont10:                                         ; preds = %then9, %ifcont
+  %loadtmp11 = load i32, i32* %m, align 4
+  %gttmp12 = icmp sgt i32 %loadtmp11, 20
+  br i1 %gttmp12, label %then13, label %ifcont14
+
+then13:                                           ; preds = %ifcont10
+  store i32 20, i32* %m, align 4
+  br label %ifcont14
+
+ifcont14:                                         ; preds = %then13, %ifcont10
+  %loadtmp15 = load i32, i32* %p, align 4
+  %gttmp16 = icmp sgt i32 %loadtmp15, 20
+  br i1 %gttmp16, label %then17, label %ifcont18
+
+then17:                                           ; preds = %ifcont14
+  store i32 20, i32* %p, align 4
+  br label %ifcont18
+
+ifcont18:                                         ; preds = %then17, %ifcont14
+  %loadtmp19 = load i32, i32* %n, align 4
+  %loadtmp20 = load i32, i32* %m, align 4
+  call void @readMatrix(i32 %loadtmp19, i32 %loadtmp20, [20 x [20 x i32]]* %A)
+  %loadtmp21 = load i32, i32* %m, align 4
+  %loadtmp22 = load i32, i32* %p, align 4
+  call void @readMatrix(i32 %loadtmp21, i32 %loadtmp22, [20 x [20 x i32]]* %B)
+  %loadtmp23 = load i32, i32* %n, align 4
+  %loadtmp24 = load i32, i32* %m, align 4
+  %loadtmp25 = load i32, i32* %p, align 4
+  call void @matmul(i32 %loadtmp23, i32 %loadtmp24, i32 %loadtmp25, [20 x [20 x i32]]* %A, [20 x [20 x i32]]* %B, [20 x [20 x i32]]* %C)
+  call void @writeString(i8* getelementptr inbounds ([19 x i8], [19 x i8]* @3, i32 0, i32 0))
+  %loadtmp26 = load i32, i32* %n, align 4
+  %loadtmp27 = load i32, i32* %p, align 4
+  call void @writeMatrix(i32 %loadtmp26, i32 %loadtmp27, [20 x [20 x i32]]* %C)
+  ret i32 0
+}
+Call parameter type does not match function signature!
+  %A = alloca [20 x [20 x i32]], align 4
+ [20 x i32]*  call void @readMatrix(i32 %loadtmp19, i32 %loadtmp20, [20 x [20 x i32]]* %A)
+Call parameter type does not match function signature!
+  %B = alloca [20 x [20 x i32]], align 4
+ [20 x i32]*  call void @readMatrix(i32 %loadtmp21, i32 %loadtmp22, [20 x [20 x i32]]* %B)
+Call parameter type does not match function signature!
+  %A = alloca [20 x [20 x i32]], align 4
+ [20 x i32]*  call void @matmul(i32 %loadtmp23, i32 %loadtmp24, i32 %loadtmp25, [20 x [20 x i32]]* %A, [20 x [20 x i32]]* %B, [20 x [20 x i32]]* %C)
+Call parameter type does not match function signature!
+  %C = alloca [20 x [20 x i32]], align 4
+ [20 x i32]*  call void @writeMatrix(i32 %loadtmp26, i32 %loadtmp27, [20 x [20 x i32]]* %C)
+[1;31mLLVM Module verification failed!
+[0m
+Compiling factorial ... [92mOK[0m
+  Running factorial ... [92mOK[0m
+[92mTest passed for ./compilersNTUA/dana/programs/factorial.dana[0m
+Compiling hello ... [92mOK[0m
+  Running hello ... [92mOK[0m
+[92mTest passed for ./compilersNTUA/dana/programs/hello.dana[0m
+Compiling knapsack ... [91mFAILED[0m
+Codegen Error: Too many indices for array: w
+
+Compiling evenChecker ... [92mOK[0m
+  Running evenChecker ... [92mOK[0m
+[92mTest passed for ./compilersNTUA/dana/programs/evenChecker.dana[0m
+Compiling linemarket ... [91mFAILED[0m
+Codegen Error: lval::codegen: ptr is not Alloca, GEP, Argument, or GlobalVariable
+Codegen Error: RHS of assignment failed to generate code
+Codegen Error: Too many indices for array: x
+Codegen Error: Too many indices for array: x
+
+Compiling fibonacci ... [92mOK[0m
+  Running fibonacci ... [92mOK[0m
+[92mTest passed for ./compilersNTUA/dana/programs/fibonacci.dana[0m
+Compiling rotatefun ... [91mFAILED[0m
+Codegen Error: Too many indices for array: nums_param
+Codegen Error: RHS of assignment failed to generate code
+Codegen Error: Too many indices for array: nums_param
+Codegen Error: RHS of assignment failed to generate code
+Call parameter type does not match function signature!
+  %nums_main = alloca [100 x i32], align 4
+ i32*  %calltmp12 = call i32 @maxRotateFunction(i32 %loadtmp11, [100 x i32]* %nums_main)
+Invalid IR in function main
+define i32 @main() {
+entry:
+  %result = alloca i32, align 4
+  %i_main = alloca i32, align 4
+  %nums_main = alloca [100 x i32], align 4
+  %n_actual = alloca i32, align 4
+  %calltmp = call i32 @readInteger()
+  store i32 %calltmp, i32* %n_actual, align 4
+  %loadtmp = load i32, i32* %n_actual, align 4
+  %letmp = icmp sle i32 %loadtmp, 0
+  br i1 %letmp, label %then, label %ifcont
+
+then:                                             ; preds = %entry
+  call void @writeString(i8* getelementptr inbounds ([38 x i8], [38 x i8]* @0, i32 0, i32 0))
+  ret i32 0
+
+ifcont:                                           ; preds = %entry
+  %loadtmp1 = load i32, i32* %n_actual, align 4
+  %gttmp = icmp sgt i32 %loadtmp1, 100
+  br i1 %gttmp, label %then2, label %ifcont3
+
+then2:                                            ; preds = %ifcont
+  call void @writeString(i8* getelementptr inbounds ([50 x i8], [50 x i8]* @1, i32 0, i32 0))
+  ret i32 0
+
+ifcont3:                                          ; preds = %ifcont
+  store i32 0, i32* %i_main, align 4
+  br label %_header
+
+_header:                                          ; preds = %ifcont7, %ifcont3
+  br label %_body
+
+_body:                                            ; preds = %_header
+  %loadtmp4 = load i32, i32* %i_main, align 4
+  %loadtmp5 = load i32, i32* %n_actual, align 4
+  %lttmp = icmp slt i32 %loadtmp4, %loadtmp5
+  br i1 %lttmp, label %then6, label %else
+
+_after:                                           ; preds = %else
+  %loadtmp11 = load i32, i32* %n_actual, align 4
+  %calltmp12 = call i32 @maxRotateFunction(i32 %loadtmp11, [100 x i32]* %nums_main)
+  store i32 %calltmp12, i32* %result, align 4
+  %loadtmp13 = load i32, i32* %result, align 4
+  call void @writeInteger(i32 %loadtmp13)
+  call void @writeString(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @2, i32 0, i32 0))
+  ret i32 0
+
+then6:                                            ; preds = %_body
+  %loadtmp8 = load i32, i32* %i_main, align 4
+  %geptmp = getelementptr [100 x i32], [100 x i32]* %nums_main, i32 0, i32 %loadtmp8
+  %calltmp9 = call i32 @readInteger()
+  store i32 %calltmp9, i32* %geptmp, align 4
+  %loadtmp10 = load i32, i32* %i_main, align 4
+  %addtmp = add i32 %loadtmp10, 1
+  store i32 %addtmp, i32* %i_main, align 4
+  br label %ifcont7
+
+else:                                             ; preds = %_body
+  br label %_after
+
+ifcont7:                                          ; preds = %then6
+  br label %_header
+}
+Call parameter type does not match function signature!
+  %nums_main = alloca [100 x i32], align 4
+ i32*  %calltmp12 = call i32 @maxRotateFunction(i32 %loadtmp11, [100 x i32]* %nums_main)
+[1;31mLLVM Module verification failed!
+[0m
+Compiling binarysearch ... [91mFAILED[0m
+Codegen Error: lval::codegen: ptr is not Alloca, GEP, Argument, or GlobalVariable
+Codegen Error: RHS of assignment failed to generate code
+Codegen Error: Too many indices for array: arr
+Codegen Error: RHS of assignment failed to generate code
+Codegen Error: Too many indices for array: arr
+
+Compiling sumOfDigits ... [92mOK[0m
+  Running sumOfDigits ... [92mOK[0m
+[92mTest passed for ./compilersNTUA/dana/programs/sumOfDigits.dana[0m
+Compiling mergesort ... [91mFAILED[0m
+Codegen Error: Too many indices for array: arr_param
+Codegen Error: RHS of assignment failed to generate code
+Codegen Error: Too many indices for array: arr_param
+Codegen Error: RHS of assignment failed to generate code
+Codegen Error: Too many indices for array: arr_param
+Codegen Error: LHS of assignment is not a valid l-value
+Codegen Error: Too many indices for array: arr_param
+Codegen Error: LHS of assignment is not a valid l-value
+Codegen Error: Too many indices for array: arr_param
+Codegen Error: LHS of assignment is not a valid l-value
+Codegen Error: Too many indices for array: arr_param
+Codegen Error: LHS of assignment is not a valid l-value
+Call parameter type does not match function signature!
+  %arr_main = alloca [1000 x i32], align 4
+ i32*  call void @merge_sort([1000 x i32]* %arr_main, i32 0, i32 %subtmp)
+Invalid IR in function main
+define i32 @main() {
+entry:
+  %dummy_val = alloca i32, align 4
+  %i_main = alloca i32, align 4
+  %arr_main = alloca [1000 x i32], align 4
+  %n_main = alloca i32, align 4
+  %calltmp = call i32 @readInteger()
+  store i32 %calltmp, i32* %n_main, align 4
+  store i32 0, i32* %i_main, align 4
+  br label %_header
+
+_header:                                          ; preds = %ifcont4, %entry
+  br label %_body
+
+_body:                                            ; preds = %_header
+  %loadtmp = load i32, i32* %i_main, align 4
+  %loadtmp1 = load i32, i32* %n_main, align 4
+  %getmp = icmp sge i32 %loadtmp, %loadtmp1
+  br i1 %getmp, label %then, label %ifcont
+
+_after:                                           ; preds = %then
+  %loadtmp9 = load i32, i32* %n_main, align 4
+  %gttmp = icmp sgt i32 %loadtmp9, 1000
+  br i1 %gttmp, label %then10, label %ifcont12
+
+then:                                             ; preds = %_body
+  br label %_after
+
+ifcont:                                           ; preds = %_body
+  %loadtmp2 = load i32, i32* %i_main, align 4
+  %lttmp = icmp slt i32 %loadtmp2, 1000
+  br i1 %lttmp, label %then3, label %else
+
+then3:                                            ; preds = %ifcont
+  %loadtmp5 = load i32, i32* %i_main, align 4
+  %geptmp = getelementptr [1000 x i32], [1000 x i32]* %arr_main, i32 0, i32 %loadtmp5
+  %calltmp6 = call i32 @readInteger()
+  store i32 %calltmp6, i32* %geptmp, align 4
+  br label %ifcont4
+
+else:                                             ; preds = %ifcont
+  %calltmp7 = call i32 @readInteger()
+  store i32 %calltmp7, i32* %dummy_val, align 4
+  br label %ifcont4
+
+ifcont4:                                          ; preds = %else, %then3
+  %loadtmp8 = load i32, i32* %i_main, align 4
+  %addtmp = add i32 %loadtmp8, 1
+  store i32 %addtmp, i32* %i_main, align 4
+  br label %_header
+
+then10:                                           ; preds = %_after
+  call void @writeString(i8* getelementptr inbounds ([86 x i8], [86 x i8]* @0, i32 0, i32 0))
+  store i32 1000, i32* %n_main, align 4
+  br label %ifcont12
+
+ifcont12:                                         ; preds = %then10, %_after
+  %loadtmp13 = load i32, i32* %n_main, align 4
+  %gttmp14 = icmp sgt i32 %loadtmp13, 0
+  br i1 %gttmp14, label %then15, label %ifcont17
+
+then15:                                           ; preds = %ifcont12
+  %loadtmp18 = load i32, i32* %n_main, align 4
+  %subtmp = sub i32 %loadtmp18, 1
+  call void @merge_sort([1000 x i32]* %arr_main, i32 0, i32 %subtmp)
+  br label %ifcont17
+
+ifcont17:                                         ; preds = %then15, %ifcont12
+  store i32 0, i32* %i_main, align 4
+  br label %_header19
+
+_header19:                                        ; preds = %ifcont42, %ifcont17
+  br label %_body20
+
+_body20:                                          ; preds = %_header19
+  %loadtmp22 = load i32, i32* %i_main, align 4
+  %loadtmp23 = load i32, i32* %n_main, align 4
+  %getmp24 = icmp sge i32 %loadtmp22, %loadtmp23
+  br i1 %getmp24, label %then25, label %ifcont27
+
+_after21:                                         ; preds = %then25
+  call void @writeString(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @2, i32 0, i32 0))
+  ret i32 0
+
+then25:                                           ; preds = %_body20
+  br label %_after21
+
+ifcont27:                                         ; preds = %_body20
+  %loadtmp28 = load i32, i32* %i_main, align 4
+  %lttmp29 = icmp slt i32 %loadtmp28, 1000
+  br i1 %lttmp29, label %then30, label %ifcont32
+
+then30:                                           ; preds = %ifcont27
+  %loadtmp33 = load i32, i32* %i_main, align 4
+  %geptmp34 = getelementptr [1000 x i32], [1000 x i32]* %arr_main, i32 0, i32 %loadtmp33
+  %loadtmp35 = load i32, i32* %geptmp34, align 4
+  call void @writeInteger(i32 %loadtmp35)
+  br label %ifcont32
+
+ifcont32:                                         ; preds = %then30, %ifcont27
+  %loadtmp36 = load i32, i32* %i_main, align 4
+  %addtmp37 = add i32 %loadtmp36, 1
+  store i32 %addtmp37, i32* %i_main, align 4
+  %loadtmp38 = load i32, i32* %i_main, align 4
+  %loadtmp39 = load i32, i32* %n_main, align 4
+  %netmp = icmp ne i32 %loadtmp38, %loadtmp39
+  br i1 %netmp, label %then40, label %ifcont42
+
+then40:                                           ; preds = %ifcont32
+  call void @writeString(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @1, i32 0, i32 0))
+  br label %ifcont42
+
+ifcont42:                                         ; preds = %then40, %ifcont32
+  br label %_header19
+}
+Call parameter type does not match function signature!
+  %arr_main = alloca [1000 x i32], align 4
+ i32*  call void @merge_sort([1000 x i32]* %arr_main, i32 0, i32 %subtmp)
+[1;31mLLVM Module verification failed!
+[0m
+Compiling quicksort ... [91mFAILED[0m
+Codegen Error: Too many indices for array: arr
+Codegen Error: RHS of assignment failed to generate code
+Call parameter type does not match function signature!
+  %nums = alloca [100 x i32], align 4
+ i32*  call void @quicksort(i32 0, i32 %subtmp, [100 x i32]* %nums)
+Invalid IR in function main
+define i32 @main() {
+entry:
+  %k = alloca i32, align 4
+  %nums = alloca [100 x i32], align 4
+  %N = alloca i32, align 4
+  %calltmp = call i32 @readInteger()
+  store i32 %calltmp, i32* %N, align 4
+  %loadtmp = load i32, i32* %N, align 4
+  %gttmp = icmp sgt i32 %loadtmp, 100
+  br i1 %gttmp, label %then, label %ifcont
+
+then:                                             ; preds = %entry
+  call void @writeString(i8* getelementptr inbounds ([63 x i8], [63 x i8]* @0, i32 0, i32 0))
+  ret i32 0
+
+ifcont:                                           ; preds = %entry
+  %loadtmp1 = load i32, i32* %N, align 4
+  %letmp = icmp sle i32 %loadtmp1, 0
+  br i1 %letmp, label %then2, label %ifcont3
+
+then2:                                            ; preds = %ifcont
+  call void @writeString(i8* getelementptr inbounds ([38 x i8], [38 x i8]* @1, i32 0, i32 0))
+  ret i32 0
+
+ifcont3:                                          ; preds = %ifcont
+  store i32 0, i32* %k, align 4
+  br label %_header
+
+_header:                                          ; preds = %ifcont7, %ifcont3
+  br label %_body
+
+_body:                                            ; preds = %_header
+  %loadtmp4 = load i32, i32* %k, align 4
+  %loadtmp5 = load i32, i32* %N, align 4
+  %getmp = icmp sge i32 %loadtmp4, %loadtmp5
+  br i1 %getmp, label %then6, label %ifcont7
+
+_after:                                           ; preds = %then6
+  %loadtmp11 = load i32, i32* %N, align 4
+  %subtmp = sub i32 %loadtmp11, 1
+  call void @quicksort(i32 0, i32 %subtmp, [100 x i32]* %nums)
+  store i32 0, i32* %k, align 4
+  call void @writeString(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @2, i32 0, i32 0))
+  br label %_header12
+
+then6:                                            ; preds = %_body
+  br label %_after
+
+ifcont7:                                          ; preds = %_body
+  %loadtmp8 = load i32, i32* %k, align 4
+  %geptmp = getelementptr [100 x i32], [100 x i32]* %nums, i32 0, i32 %loadtmp8
+  %calltmp9 = call i32 @readInteger()
+  store i32 %calltmp9, i32* %geptmp, align 4
+  %loadtmp10 = load i32, i32* %k, align 4
+  %addtmp = add i32 %loadtmp10, 1
+  store i32 %addtmp, i32* %k, align 4
+  br label %_header
+
+_header12:                                        ; preds = %ifcont18, %_after
+  br label %_body13
+
+_body13:                                          ; preds = %_header12
+  %loadtmp15 = load i32, i32* %k, align 4
+  %loadtmp16 = load i32, i32* %N, align 4
+  %lttmp = icmp slt i32 %loadtmp15, %loadtmp16
+  br i1 %lttmp, label %then17, label %else
+
+_after14:                                         ; preds = %else
+  call void @writeString(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @4, i32 0, i32 0))
+  ret i32 0
+
+then17:                                           ; preds = %_body13
+  %loadtmp19 = load i32, i32* %k, align 4
+  %gttmp20 = icmp sgt i32 %loadtmp19, 0
+  br i1 %gttmp20, label %then21, label %ifcont23
+
+else:                                             ; preds = %_body13
+  br label %_after14
+
+ifcont18:                                         ; preds = %ifcont23
+  br label %_header12
+
+then21:                                           ; preds = %then17
+  call void @writeString(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @3, i32 0, i32 0))
+  br label %ifcont23
+
+ifcont23:                                         ; preds = %then21, %then17
+  %loadtmp24 = load i32, i32* %k, align 4
+  %geptmp25 = getelementptr [100 x i32], [100 x i32]* %nums, i32 0, i32 %loadtmp24
+  %loadtmp26 = load i32, i32* %geptmp25, align 4
+  call void @writeInteger(i32 %loadtmp26)
+  %loadtmp27 = load i32, i32* %k, align 4
+  %addtmp28 = add i32 %loadtmp27, 1
+  store i32 %addtmp28, i32* %k, align 4
+  br label %ifcont18
+}
+Call parameter type does not match function signature!
+  %nums = alloca [100 x i32], align 4
+ i32*  call void @quicksort(i32 0, i32 %subtmp, [100 x i32]* %nums)
+[1;31mLLVM Module verification failed!
+[0m
+Compiling def_scopes ... [91mFAILED[0m
+Instruction does not dominate all uses!
+  %counter = alloca i32, align 4
+  %loadtmp = load i32, i32* %counter, align 4
+Instruction does not dominate all uses!
+  %counter = alloca i32, align 4
+  store i32 %addtmp, i32* %counter, align 4
+Instruction does not dominate all uses!
+  %counter = alloca i32, align 4
+  %loadtmp1 = load i32, i32* %counter, align 4
+Invalid IR in function useCounter.inc
+define void @useCounter.inc() {
+entry:
+  %loadtmp = load i32, i32* %counter, align 4
+  %addtmp = add i32 %loadtmp, 1
+  store i32 %addtmp, i32* %counter, align 4
+  %loadtmp1 = load i32, i32* %counter, align 4
+  call void @writeInteger(i32 %loadtmp1)
+  call void @writeChar(i8 10)
+  ret void
+}
+Instruction does not dominate all uses!
+  %counter = alloca i32, align 4
+  %loadtmp = load i32, i32* %counter, align 4
+Instruction does not dominate all uses!
+  %counter = alloca i32, align 4
+  store i32 %addtmp, i32* %counter, align 4
+Instruction does not dominate all uses!
+  %counter = alloca i32, align 4
+  %loadtmp1 = load i32, i32* %counter, align 4
+[1;31mLLVM Module verification failed!
+[0m
+Compiling lis ... [91mFAILED[0m
+Codegen Error: Too many indices for array: arr_param
+Codegen Error: Too many indices for array: arr_param
+
+Compiling primeFactors ... [92mOK[0m
+  Running primeFactors ... [92mOK[0m
+[92mTest passed for ./compilersNTUA/dana/programs/primeFactors.dana[0m
+Compiling sudoku ... [91mFAILED[0m
+Codegen Error: Too many indices for array: b
+Codegen Error: Too many indices for array: b
+
+Compiling bsort ... [91mFAILED[0m
+Codegen Error: lval::codegen: ptr is not Alloca, GEP, Argument, or GlobalVariable
+Codegen Error: RHS of assignment failed to generate code
+Codegen Error: Too many indices for array: x
+Codegen Error: Too many indices for array: x
+
+Compiling tsp ... [91mFAILED[0m
+
+Compiling powint ... [92mOK[0m
+  Running powint ... [92mOK[0m
+[92mTest passed for ./compilersNTUA/dana/programs/powint.dana[0m
+Compiling gcd ... [91mFAILED[0m
+
+Compiling perceptron ... [91mFAILED[0m
+Instruction does not dominate all uses!
+  %SCALE = alloca i32, align 4
+  %loadtmp4 = load i32, i32* %SCALE, align 4
+Invalid IR in function fpmul
+define i32 @fpmul(i32 %a, i32 %b) {
+entry:
+  %b2 = alloca i32, align 4
+  %a1 = alloca i32, align 4
+  store i32 %a, i32* %a1, align 4
+  store i32 %b, i32* %b2, align 4
+  %loadtmp = load i32, i32* %a1, align 4
+  %loadtmp3 = load i32, i32* %b2, align 4
+  %multmp = mul i32 %loadtmp, %loadtmp3
+  %loadtmp4 = load i32, i32* %SCALE, align 4
+  %divtmp = sdiv i32 %multmp, %loadtmp4
+  ret i32 %divtmp
+}
+Instruction does not dominate all uses!
+  %SCALE = alloca i32, align 4
+  %loadtmp2 = load i32, i32* %SCALE, align 4
+Invalid IR in function tofp
+define i32 @tofp(i32 %x) {
+entry:
+  %x1 = alloca i32, align 4
+  store i32 %x, i32* %x1, align 4
+  %loadtmp = load i32, i32* %x1, align 4
+  %loadtmp2 = load i32, i32* %SCALE, align 4
+  %multmp = mul i32 %loadtmp, %loadtmp2
+  ret i32 %multmp
+}
+Codegen Error: Too many indices for array: w
+Codegen Error: Too many indices for array: w
+Codegen Error: RHS of assignment failed to generate code
+Codegen Error: Too many indices for array: x
+Codegen Error: Too many indices for array: x
+Codegen Error: Too many indices for array: t
+Instruction does not dominate all uses!
+  %example_size = alloca i32, align 4
+  %loadtmp3 = load i32, i32* %example_size, align 4
+Invalid IR in function debugInput
+define void @debugInput([2 x i32]* %x, i32* %t) {
+entry:
+  %tt = alloca i32, align 4
+  %t2 = alloca i32*, align 8
+  %x1 = alloca [2 x i32]*, align 8
+  store [2 x i32]* %x, [2 x i32]** %x1, align 8
+  store i32* %t, i32** %t2, align 8
+  call void @writeString(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @0, i32 0, i32 0))
+  store i32 0, i32* %tt, align 4
+  br label %_header
+
+_header:                                          ; preds = %ifcont, %entry
+  br label %_body
+
+_body:                                            ; preds = %_header
+  %loadtmp = load i32, i32* %tt, align 4
+  %loadtmp3 = load i32, i32* %example_size, align 4
+  %lttmp = icmp slt i32 %loadtmp, %loadtmp3
+  br i1 %lttmp, label %then, label %else
+
+_after:                                           ; preds = %else
+  ret void
+
+then:                                             ; preds = %_body
+  %loadtmp4 = load i32, i32* %tt, align 4
+  call void @writeInteger(i32 %loadtmp4)
+  call void @writeString(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @1, i32 0, i32 0))
+  %ptrload = load [2 x i32]*, [2 x i32]** %x1, align 8
+  %loadtmp5 = load i32, i32* %tt, align 4
+  call void @writeChar(i8 32)
+  %ptrload6 = load [2 x i32]*, [2 x i32]** %x1, align 8
+  %loadtmp7 = load i32, i32* %tt, align 4
+  call void @writeChar(i8 32)
+  %ptrload8 = load i32*, i32** %t2, align 8
+  call void @writeChar(i8 40)
+  %loadtmp9 = load i32, i32* %tt, align 4
+  call void @writeInteger(i32 %loadtmp9)
+  call void @writeChar(i8 41)
+  call void @writeChar(i8 10)
+  %loadtmp10 = load i32, i32* %tt, align 4
+  %addtmp = add i32 %loadtmp10, 1
+  store i32 %addtmp, i32* %tt, align 4
+  br label %ifcont
+
+else:                                             ; preds = %_body
+  br label %_after
+
+ifcont:                                           ; preds = %then
+  br label %_header
+}
+Codegen Error: Too many indices for array: x
+Codegen Error: RHS of assignment failed to generate code
+Instruction does not dominate all uses!
+  %NUM_EPOCHS = alloca i32, align 4
+  %loadtmp5 = load i32, i32* %NUM_EPOCHS, align 4
+Instruction does not dominate all uses!
+  %example_size = alloca i32, align 4
+  %loadtmp10 = load i32, i32* %example_size, align 4
+Invalid IR in function train
+define void @train([2 x i32]* %x, i32* %t, i32* %w, i32* %bias) {
+entry:
+  %temp_x = alloca [2 x i32], align 4
+  %delta = alloca i32, align 4
+  %err = alloca i32, align 4
+  %y = alloca i32, align 4
+  %tt = alloca i32, align 4
+  %epoch = alloca i32, align 4
+  %bias4 = alloca i32*, align 8
+  %w3 = alloca i32*, align 8
+  %t2 = alloca i32*, align 8
+  %x1 = alloca [2 x i32]*, align 8
+  store [2 x i32]* %x, [2 x i32]** %x1, align 8
+  store i32* %t, i32** %t2, align 8
+  store i32* %w, i32** %w3, align 8
+  store i32* %bias, i32** %bias4, align 8
+  store i32 0, i32* %epoch, align 4
+  br label %_header
+
+_header:                                          ; preds = %ifcont, %entry
+  br label %_body
+
+_body:                                            ; preds = %_header
+  %loadtmp = load i32, i32* %epoch, align 4
+  %loadtmp5 = load i32, i32* %NUM_EPOCHS, align 4
+  %lttmp = icmp slt i32 %loadtmp, %loadtmp5
+  br i1 %lttmp, label %then, label %else
+
+_after:                                           ; preds = %else
+  ret void
+
+then:                                             ; preds = %_body
+  store i32 0, i32* %tt, align 4
+  br label %_header6
+
+else:                                             ; preds = %_body
+  br label %_after
+
+ifcont:                                           ; preds = %_after8
+  br label %_header
+
+_header6:                                         ; preds = %ifcont14, %then
+  br label %_body7
+
+_body7:                                           ; preds = %_header6
+  %loadtmp9 = load i32, i32* %tt, align 4
+  %loadtmp10 = load i32, i32* %example_size, align 4
+  %lttmp11 = icmp slt i32 %loadtmp9, %loadtmp10
+  br i1 %lttmp11, label %then12, label %else13
+
+_after8:                                          ; preds = %else13
+  %loadtmp16 = load i32, i32* %epoch, align 4
+  %addtmp = add i32 %loadtmp16, 1
+  store i32 %addtmp, i32* %epoch, align 4
+  br label %ifcont
+
+then12:                                           ; preds = %_body7
+  %geptmp = getelementptr [2 x i32], [2 x i32]* %temp_x, i32 0, i32 0
+  %ptrload = load [2 x i32]*, [2 x i32]** %x1, align 8
+  %loadtmp15 = load i32, i32* %tt, align 4
+  br label %ifcont14
+
+else13:                                           ; preds = %_body7
+  br label %_after8
+
+ifcont14:                                         ; preds = %then12
+  br label %_header6
+}
+Codegen Error: Too many indices for array: weights
+Codegen Error: LHS of assignment is not a valid l-value
+Call parameter type does not match function signature!
+  %weights = alloca [2 x i32], align 4
+ i32*  call void @init_weights_bias([2 x i32]* %weights, i32* %bias)
+Call parameter type does not match function signature!
+  %inputs = alloca [4 x [2 x i32]], align 4
+ [2 x i32]*  call void @train([4 x [2 x i32]]* %inputs, [4 x i32]* %expected, [2 x i32]* %weights, i32* %bias)
+Call parameter type does not match function signature!
+  %geptmp26 = getelementptr [4 x [2 x i32]], [4 x [2 x i32]]* %inputs, i32 0, i32 %loadtmp25
+ i32*  %calltmp28 = call i32 @predict([2 x i32]* %geptmp26, [2 x i32]* %weights, i32 %loadtmp27)
+Invalid IR in function main
+define i32 @main() {
+entry:
+  %example_size = alloca i32, align 4
+  %NUM_EXAMPLES = alloca i32, align 4
+  %in_iter = alloca i32, align 4
+  %iter = alloca i32, align 4
+  %test_in = alloca [2 x i32], align 4
+  %expected = alloca [4 x i32], align 4
+  %inputs = alloca [4 x [2 x i32]], align 4
+  %bias = alloca i32, align 4
+  %weights = alloca [2 x i32], align 4
+  %NUM_EPOCHS = alloca i32, align 4
+  %LR = alloca i32, align 4
+  %SCALE = alloca i32, align 4
+  store i32 256, i32* %SCALE, align 4
+  %loadtmp = load i32, i32* %SCALE, align 4
+  %divtmp = sdiv i32 %loadtmp, 4
+  store i32 %divtmp, i32* %LR, align 4
+  store i32 100, i32* %NUM_EPOCHS, align 4
+  %calltmp = call i32 @readInteger()
+  store i32 %calltmp, i32* %NUM_EXAMPLES, align 4
+  store i32 0, i32* %in_iter, align 4
+  br label %_header
+
+_header:                                          ; preds = %ifcont, %entry
+  br label %_body
+
+_body:                                            ; preds = %_header
+  %loadtmp1 = load i32, i32* %in_iter, align 4
+  %loadtmp2 = load i32, i32* %NUM_EXAMPLES, align 4
+  %lttmp = icmp slt i32 %loadtmp1, %loadtmp2
+  br i1 %lttmp, label %then, label %else
+
+_after:                                           ; preds = %else
+  ret i32 0
+
+then:                                             ; preds = %_body
+  %calltmp3 = call i32 @readInteger()
+  store i32 %calltmp3, i32* %example_size, align 4
+  call void @init_weights_bias([2 x i32]* %weights, i32* %bias)
+  store i32 0, i32* %iter, align 4
+  br label %input_loop_header
+
+else:                                             ; preds = %_body
+  br label %_after
+
+ifcont:                                           ; preds = %test_loop_after
+  br label %_header
+
+input_loop_header:                                ; preds = %ifcont9, %then
+  br label %input_loop_body
+
+input_loop_body:                                  ; preds = %input_loop_header
+  %loadtmp4 = load i32, i32* %iter, align 4
+  %loadtmp5 = load i32, i32* %example_size, align 4
+  %lttmp6 = icmp slt i32 %loadtmp4, %loadtmp5
+  br i1 %lttmp6, label %then7, label %else8
+
+input_loop_after:                                 ; preds = %else8
+  call void @train([4 x [2 x i32]]* %inputs, [4 x i32]* %expected, [2 x i32]* %weights, i32* %bias)
+  store i32 0, i32* %iter, align 4
+  br label %test_loop_header
+
+then7:                                            ; preds = %input_loop_body
+  %loadtmp10 = load i32, i32* %iter, align 4
+  %geptmp = getelementptr [4 x [2 x i32]], [4 x [2 x i32]]* %inputs, i32 0, i32 %loadtmp10, i32 0
+  %calltmp11 = call i32 @readInteger()
+  store i32 %calltmp11, i32* %geptmp, align 4
+  %loadtmp12 = load i32, i32* %iter, align 4
+  %geptmp13 = getelementptr [4 x [2 x i32]], [4 x [2 x i32]]* %inputs, i32 0, i32 %loadtmp12, i32 1
+  %calltmp14 = call i32 @readInteger()
+  store i32 %calltmp14, i32* %geptmp13, align 4
+  %loadtmp15 = load i32, i32* %iter, align 4
+  %geptmp16 = getelementptr [4 x i32], [4 x i32]* %expected, i32 0, i32 %loadtmp15
+  %calltmp17 = call i32 @readInteger()
+  store i32 %calltmp17, i32* %geptmp16, align 4
+  %loadtmp18 = load i32, i32* %iter, align 4
+  %addtmp = add i32 %loadtmp18, 1
+  store i32 %addtmp, i32* %iter, align 4
+  br label %ifcont9
+
+else8:                                            ; preds = %input_loop_body
+  br label %input_loop_after
+
+ifcont9:                                          ; preds = %then7
+  br label %input_loop_header
+
+test_loop_header:                                 ; preds = %ifcont24, %input_loop_after
+  br label %test_loop_body
+
+test_loop_body:                                   ; preds = %test_loop_header
+  %loadtmp19 = load i32, i32* %iter, align 4
+  %loadtmp20 = load i32, i32* %example_size, align 4
+  %lttmp21 = icmp slt i32 %loadtmp19, %loadtmp20
+  br i1 %lttmp21, label %then22, label %else23
+
+test_loop_after:                                  ; preds = %else23
+  call void @writeChar(i8 10)
+  %loadtmp37 = load i32, i32* %in_iter, align 4
+  %addtmp38 = add i32 %loadtmp37, 1
+  store i32 %addtmp38, i32* %in_iter, align 4
+  br label %ifcont
+
+then22:                                           ; preds = %test_loop_body
+  %loadtmp25 = load i32, i32* %iter, align 4
+  %geptmp26 = getelementptr [4 x [2 x i32]], [4 x [2 x i32]]* %inputs, i32 0, i32 %loadtmp25
+  %loadtmp27 = load i32, i32* %bias, align 4
+  %calltmp28 = call i32 @predict([2 x i32]* %geptmp26, [2 x i32]* %weights, i32 %loadtmp27)
+  call void @writeInteger(i32 %calltmp28)
+  %loadtmp29 = load i32, i32* %iter, align 4
+  %addtmp30 = add i32 %loadtmp29, 1
+  store i32 %addtmp30, i32* %iter, align 4
+  %loadtmp31 = load i32, i32* %iter, align 4
+  %loadtmp32 = load i32, i32* %example_size, align 4
+  %lttmp33 = icmp slt i32 %loadtmp31, %loadtmp32
+  br i1 %lttmp33, label %then34, label %ifcont36
+
+else23:                                           ; preds = %test_loop_body
+  br label %test_loop_after
+
+ifcont24:                                         ; preds = %ifcont36
+  br label %test_loop_header
+
+then34:                                           ; preds = %then22
+  call void @writeChar(i8 32)
+  br label %ifcont36
+
+ifcont36:                                         ; preds = %then34, %then22
+  br label %ifcont24
+}
+Call parameter type does not match function signature!
+  %weights = alloca [2 x i32], align 4
+ i32*  call void @init_weights_bias([2 x i32]* %weights, i32* %bias)
+Call parameter type does not match function signature!
+  %inputs = alloca [4 x [2 x i32]], align 4
+ [2 x i32]*  call void @train([4 x [2 x i32]]* %inputs, [4 x i32]* %expected, [2 x i32]* %weights, i32* %bias)
+Call parameter type does not match function signature!
+  %geptmp26 = getelementptr [4 x [2 x i32]], [4 x [2 x i32]]* %inputs, i32 0, i32 %loadtmp25
+ i32*  %calltmp28 = call i32 @predict([2 x i32]* %geptmp26, [2 x i32]* %weights, i32 %loadtmp27)
+Instruction does not dominate all uses!
+  %SCALE = alloca i32, align 4
+  %loadtmp4 = load i32, i32* %SCALE, align 4
+Instruction does not dominate all uses!
+  %SCALE = alloca i32, align 4
+  %loadtmp2 = load i32, i32* %SCALE, align 4
+Instruction does not dominate all uses!
+  %example_size = alloca i32, align 4
+  %loadtmp3 = load i32, i32* %example_size, align 4
+Instruction does not dominate all uses!
+  %NUM_EPOCHS = alloca i32, align 4
+  %loadtmp5 = load i32, i32* %NUM_EPOCHS, align 4
+Instruction does not dominate all uses!
+  %example_size = alloca i32, align 4
+  %loadtmp10 = load i32, i32* %example_size, align 4
+[1;31mLLVM Module verification failed!
+[0m
+Compiling dot_product ... [91mFAILED[0m
+Codegen Error: Too many indices for array: vector1
+Codegen Error: Too many indices for array: vector2
+Codegen Error: RHS of assignment failed to generate code
+Call parameter type does not match function signature!
+  %ex_vector1 = alloca [4 x i32], align 4
+ i32*  %calltmp = call i32 @dot_product(i32 4, [4 x i32]* %ex_vector1, [4 x i32]* %ex_vector2)
+Invalid IR in function main
+define i32 @main() {
+entry:
+  %result = alloca i32, align 4
+  %ex_vector2 = alloca [4 x i32], align 4
+  %ex_vector1 = alloca [4 x i32], align 4
+  %geptmp = getelementptr [4 x i32], [4 x i32]* %ex_vector1, i32 0, i32 0
+  store i32 2, i32* %geptmp, align 4
+  %geptmp1 = getelementptr [4 x i32], [4 x i32]* %ex_vector1, i32 0, i32 1
+  store i32 4, i32* %geptmp1, align 4
+  %geptmp2 = getelementptr [4 x i32], [4 x i32]* %ex_vector1, i32 0, i32 2
+  store i32 6, i32* %geptmp2, align 4
+  %geptmp3 = getelementptr [4 x i32], [4 x i32]* %ex_vector1, i32 0, i32 3
+  store i32 8, i32* %geptmp3, align 4
+  %geptmp4 = getelementptr [4 x i32], [4 x i32]* %ex_vector2, i32 0, i32 0
+  store i32 1, i32* %geptmp4, align 4
+  %geptmp5 = getelementptr [4 x i32], [4 x i32]* %ex_vector2, i32 0, i32 1
+  store i32 3, i32* %geptmp5, align 4
+  %geptmp6 = getelementptr [4 x i32], [4 x i32]* %ex_vector2, i32 0, i32 2
+  store i32 5, i32* %geptmp6, align 4
+  %geptmp7 = getelementptr [4 x i32], [4 x i32]* %ex_vector2, i32 0, i32 3
+  store i32 7, i32* %geptmp7, align 4
+  %calltmp = call i32 @dot_product(i32 4, [4 x i32]* %ex_vector1, [4 x i32]* %ex_vector2)
+  store i32 %calltmp, i32* %result, align 4
+  call void @writeString(i8* getelementptr inbounds ([40 x i8], [40 x i8]* @0, i32 0, i32 0))
+  %loadtmp = load i32, i32* %result, align 4
+  call void @writeInteger(i32 %loadtmp)
+  call void @writeChar(i8 10)
+  ret i32 0
+}
+Call parameter type does not match function signature!
+  %ex_vector1 = alloca [4 x i32], align 4
+ i32*  %calltmp = call i32 @dot_product(i32 4, [4 x i32]* %ex_vector1, [4 x i32]* %ex_vector2)
+[1;31mLLVM Module verification failed!
+[0m
+Compiling factors ... [92mOK[0m
+  Running factors ... [92mOK[0m
+[92mTest passed for ./compilersNTUA/dana/programs/factors.dana[0m
+Compiling N_Queens ... [91mFAILED[0m
+Codegen Error: Too many indices for array: board_param
+
+Compiling hanoi ... [92mOK[0m
+  Running hanoi ... [92mOK[0m
+[92mTest passed for ./compilersNTUA/dana/programs/hanoi.dana[0m
+Compiling nextRand ... [91mFAILED[0m
+
+[94m
+Total tested: 31 (10 correct and 21 failed)[0m

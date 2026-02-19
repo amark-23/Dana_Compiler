@@ -6,10 +6,10 @@ YELLOW=\033[0;33m
 NC=\033[0m
 
 CXX=g++
-LLVM_CXXFLAGS = $(shell llvm-config-18 --cxxflags)
-FILTERED_LLVM_CXXFLAGS = $(filter-out -fno-exceptions, $(LLVM_CXXFLAGS))
-CXXFLAGS = $(FILTERED_LLVM_CXXFLAGS) -Wall -std=c++17
-LIBS = $(shell llvm-config-18 --libs --system-libs all) -lfl
+LLVM_CXXFLAGS = $(shell llvm-config-14 --cxxflags)
+FILTERED_LLVM_CXXFLAGS = $(filter-out -fno-exceptions -std=c++14, $(LLVM_CXXFLAGS))
+CXXFLAGS = -Wall -std=c++17 $(FILTERED_LLVM_CXXFLAGS)
+LIBS = $(shell llvm-config-14 --libs --system-libs all) -lfl
 EXEC_NAME = dana
 OBJS = lexer.o parser.o ast.o symbol.o semantic.o codegen.o
 RUNTIME_LIB = runtime_lib.o
