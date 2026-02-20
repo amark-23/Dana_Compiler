@@ -23,6 +23,11 @@ make test
 ```
 This will execute the `dana` compiler on each `.dana` test file and display the results.
 
+Make sure you have added the following lines to the extension func in test-correct.py , test-erroneous.py
+```
+elif lang == "dana":
+        return '.dana'
+```
 ## Cleaning Up
 To remove all generated files except the original source files, use:
 ```sh
@@ -35,7 +40,7 @@ Ensure you have the following tools installed:
 - `flex` (for lexical analysis)
 - `bison` (for syntax analysis)
 - `gcc` (for compilation)
-- `llvm-config` (for code generation, version: 18.1.3)
+- `llvm-config` (for code generation and optimization, version: 14)
 
 ## Author
 

@@ -198,11 +198,8 @@ void CodegenContext::enterScope() {
 }
 
 void CodegenContext::exitScope() {
-    if (!namedValuesStack.empty()) {
-        namedValuesStack.pop_back();
-    } else {
-        logError("exitScope called on empty scope stack");
-    }
+    if (!namedValuesStack.empty()) namedValuesStack.pop_back();
+    else logError("exitScope called on empty scope stack");
 }
 
 void CodegenContext::enterFunctionScope(const std::string& fnName) {
@@ -210,35 +207,27 @@ void CodegenContext::enterFunctionScope(const std::string& fnName) {
 }
 
 void CodegenContext::exitFunctionScope() {
-    if (!functionNameStack.empty()) {
-        functionNameStack.pop_back();
-    } else {
-        logError("exitFunctionScope called on empty function name stack");
-    }
+    if (!functionNameStack.empty()) functionNameStack.pop_back();
+    else logError("exitFunctionScope called on empty function name stack");
 }
 
 std::string CodegenContext::getQualifiedFunctionName(const std::string& fnName) {
-    if (functionNameStack.empty()) {
-        return fnName;
-    }
+    if (functionNameStack.empty()) return fnName;
     std::string qualified = fnName;
-    for (const auto& scope : functionNameStack) {
+    for (const auto& scope : functionNameStack)
         qualified = scope + "." + qualified;
-    }
     return qualified;
 }
 
 void CodegenContext::registerLocalFunction(const std::string& fnName, const std::string& qualifiedName) {
-    if (localFunctionsStack.empty()) {
+    if (localFunctionsStack.empty())
         localFunctionsStack.push_back(std::map<std::string, std::string>());
-    }
     localFunctionsStack.back()[fnName] = qualifiedName;
 }
 
 std::string CodegenContext::lookupLocalFunction(const std::string& fnName) {
-    for (auto it = localFunctionsStack.rbegin(); it != localFunctionsStack.rend(); ++it) {
+    for (auto it = localFunctionsStack.rbegin(); it != localFunctionsStack.rend(); ++it)
         if (it->count(fnName)) return (*it)[fnName];
-    }
     return fnName;  
 }
 
@@ -248,9 +237,8 @@ void CodegenContext::clearNamedValues() {
 }
 
 llvm::Value* CodegenContext::findVariable(const std::string& name) {
-    for (auto it = namedValuesStack.rbegin(); it != namedValuesStack.rend(); ++it) {
+    for (auto it = namedValuesStack.rbegin(); it != namedValuesStack.rend(); ++it)
         if (it->count(name)) return (*it)[name];
-    }
     return nullptr; 
 }
 
@@ -316,10 +304,7 @@ llvm::Value* fdefNode::codegen(CodegenContext& context) {
     std::string fnName = hdr->iden->name;
     bool isMain = (this == context.MainFunctionNode);
     if (isMain) fnName = "main";
-    else {
-        fnName = context.getQualifiedFunctionName(fnName);
-    }
-
+    else fnName = context.getQualifiedFunctionName(fnName);
     llvm::Function* TheFunction = context.TheModule->getFunction(fnName);
     if (!TheFunction) {
         std::vector<llvm::Type*> ParamTypes;
@@ -340,31 +325,23 @@ llvm::Value* fdefNode::codegen(CodegenContext& context) {
                 p = p->tail;
             }
         }
-
         llvm::Type* retType;
         if (isMain) retType = context.Builder.getInt32Ty();
         else  retType = context.getLLVMType(hdr->headType);
-
         llvm::FunctionType* FT = llvm::FunctionType::get(retType, ParamTypes, false);
         TheFunction = llvm::Function::Create(FT, llvm::Function::ExternalLinkage, fnName, context.TheModule.get());
     }
-    
-    if (!TheFunction->empty()) {
-        return context.logError("Function " + fnName + " is already defined.");
-    }
-
+    if (!TheFunction->empty()) return context.logError("Function " + fnName + " is already defined.");
     llvm::BasicBlock* EntryBB = llvm::BasicBlock::Create(context.TheContext, "entry", TheFunction);
     llvm::Function* OldFunction = context.currentFunction;
     context.currentFunction = TheFunction;
     context.enterScope();
-    
     if (!isMain) {
         context.registerLocalFunction(hdr->iden->name, fnName);
         context.enterFunctionScope(hdr->iden->name);
         context.localFunctionsStack.push_back(std::map<std::string, std::string>());
     }
     context.Builder.SetInsertPoint(EntryBB);
-    
     if (hdr->params) {
         paramNode* p = hdr->params;
         auto arg_it = TheFunction->arg_begin();
@@ -378,9 +355,7 @@ llvm::Value* fdefNode::codegen(CodegenContext& context) {
                 }
 
                 for (const auto& name : *(p->names)) {
-                    if (arg_it == TheFunction->arg_end())
-                        return context.logError("Too few arguments provided to function " + fnName);
-                    
+                    if (arg_it == TheFunction->arg_end()) return context.logError("Too few arguments provided to function " + fnName);
                     llvm::Value* arg = arg_it++;
                     arg->setName(name);
                     llvm::AllocaInst* Alloca = context.createEntryBlockAlloca(paramT, name);
@@ -402,7 +377,7 @@ llvm::Value* fdefNode::codegen(CodegenContext& context) {
         if (!context.localFunctionsStack.empty()) {
             context.localFunctionsStack.pop_back();
         }
-        context.exitFunctionScope(); 
+        context.exitFunctionScope();
     }
     context.exitScope(); 
     context.currentFunction = OldFunction;
@@ -482,7 +457,7 @@ llvm::Value* stmtNode::codegen(CodegenContext& context) {
     else if (stmtType == "decl") {}
     else if (stmtType == "asgn") {
         if (!lval || !exp) return context.logError("Invalid assignment");
-        
+
         llvm::Value* lhsPtr = lval->codegen_ptr(context);
         if (!lhsPtr) return context.logError("LHS of assignment is not a valid l-value");
 
@@ -522,7 +497,7 @@ llvm::Value* stmtNode::codegen(CodegenContext& context) {
         } else {
             context.Builder.CreateRetVoid();
         }
-    } 
+    }
     else if (stmtType == "if") {
         if (!ifnode) return context.logError("Malformed if");
         ifnode->codegen(context);
@@ -535,9 +510,7 @@ llvm::Value* stmtNode::codegen(CodegenContext& context) {
     if (context.Builder.GetInsertBlock() != nullptr && 
         context.Builder.GetInsertBlock()->getTerminator() == nullptr) 
     {
-        if (this->stmtTail) {
-            this->stmtTail->codegen(context);
-        }
+        if (this->stmtTail) this->stmtTail->codegen(context);
     }
     return nullptr;
 }
@@ -579,7 +552,7 @@ llvm::Value* ifNode::codegen(CodegenContext& context) {
     }
     if (!MergeBB->hasNPredecessorsOrMore(1)) MergeBB->eraseFromParent();
     else context.Builder.SetInsertPoint(MergeBB);
-    
+
     return nullptr;
 }
 
@@ -601,15 +574,19 @@ llvm::Value* exprNode::codegen(CodegenContext& context) {
             if (!func) return context.logError("Function call node missing fcallNode");
             return func->codegen(context);
         case '+': {
-            llvm::Value* L = leftExpr->codegen(context);
             llvm::Value* R = rightExpr->codegen(context);
-            if (!L || !R) return nullptr;
+            if (!R) return nullptr;
+            if (!leftExpr) return R;
+            llvm::Value* L = leftExpr->codegen(context);
+            if (!L) return nullptr;
             return context.Builder.CreateAdd(L, R, "addtmp");
         }
         case '-': {
-            llvm::Value* L = leftExpr->codegen(context);
             llvm::Value* R = rightExpr->codegen(context);
-            if (!L || !R) return nullptr;
+            if (!R) return nullptr;
+            if (!leftExpr) return context.Builder.CreateNeg(R, "negtmp");
+            llvm::Value* L = leftExpr->codegen(context);
+            if (!L) return nullptr;
             return context.Builder.CreateSub(L, R, "subtmp");
         }
         case '*': {
@@ -698,7 +675,7 @@ llvm::Value* exprNode::codegen(CodegenContext& context) {
 llvm::Value* fcallNode::codegen(CodegenContext& context) {
     std::string lookupName = context.lookupLocalFunction(iden->name);
     llvm::Function* CalleeF = context.TheModule->getFunction(lookupName);
-    
+
     if (!CalleeF) CalleeF = context.TheModule->getFunction(iden->name);
     if (!CalleeF) CalleeF = context.getBuiltin(iden->name);
     if (!CalleeF) return context.logError("Unknown function referenced: " + iden->name);
@@ -820,18 +797,15 @@ llvm::Value* lvalNode::codegen_ptr(CodegenContext& context) {
     if (auto *PT = llvm::dyn_cast<llvm::PointerType>(Ptr->getType())) {
         gepBaseType = PT->getElementType();
         if (!gepBaseType) return context.logError("Failed to get element type for pointer in codegen_ptr");
-    } else {
+    } else
         return context.logError("Variable is not a pointer/address");
-    }
 
     if (!ind || ind->empty()) {
         bool isGlobalArray = false;
         if (auto* GV = llvm::dyn_cast<llvm::GlobalVariable>(Ptr)) {
              if (GV->getValueType()->isArrayTy()) isGlobalArray = true;
         }
-        if (isGlobalArray) {
-            return Ptr;
-        }
+        if (isGlobalArray) return Ptr;
         return Ptr;
     }
 
@@ -855,13 +829,11 @@ llvm::Value* lvalNode::codegen_ptr(CodegenContext& context) {
     for (auto* idxExpr : *ind) {
         llvm::Value* idxVal = idxExpr->codegen(context);
         if (!idxVal) return nullptr;
-        
-        // FIX: Ensure index is i32
-        if (idxVal->getType()->isIntegerTy(8)) {
+
+        if (idxVal->getType()->isIntegerTy(8))
             idxVal = context.Builder.CreateZExt(idxVal, context.Builder.getInt32Ty(), "idxzext");
-        } else if (idxVal->getType()->isIntegerTy(1)) {
+        else if (idxVal->getType()->isIntegerTy(1))
             idxVal = context.Builder.CreateZExt(idxVal, context.Builder.getInt32Ty(), "idxzext");
-        }
 
         if (currentType->isPointerTy()) {
             IdxList.push_back(idxVal);
