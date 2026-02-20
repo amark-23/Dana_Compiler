@@ -16,7 +16,12 @@
 #include "llvm/ADT/SmallString.h"
 #include "llvm/IR/GlobalVariable.h"
 #include "llvm/IR/Constants.h"
-#include "llvm/IR/Verifier.h" 
+#include "llvm/IR/Verifier.h"
+
+#include "llvm/Transforms/Scalar.h"
+#include "llvm/Transforms/Utils.h"
+#include "llvm/IR/LegacyPassManager.h"
+#include "llvm/Transforms/InstCombine/InstCombine.h"
 
 static std::string process_escapes(const std::string& raw_str) {
     std::string result = "";
@@ -463,7 +468,8 @@ llvm::Value* stmtNode::codegen(CodegenContext& context) {
         if (type->isVoidTy()) return context.logError("Cannot declare variable of type void");
         
         for (const auto& n : *varNames) {
-            if (context.currentFunction == nullptr) {
+            bool isMain = (context.currentFunction && context.currentFunction->getName() == "main");
+            if (context.currentFunction == nullptr || isMain) {
                 llvm::GlobalVariable* GV = context.createGlobalVariable(type, n);
                 if (!GV) return context.logError("Failed to create global variable " + n);
             } else {
@@ -483,6 +489,21 @@ llvm::Value* stmtNode::codegen(CodegenContext& context) {
         llvm::Value* rhsVal = exp->codegen(context);
         if (!rhsVal) return context.logError("RHS of assignment failed to generate code");
         
+        llvm::Type* lhsType = lhsPtr->getType()->getPointerElementType();
+        llvm::Type* rhsType = rhsVal->getType();
+
+        if (lhsType != rhsType) {
+            if (lhsType->isIntegerTy(32) && (rhsType->isIntegerTy(1) || rhsType->isIntegerTy(8))) {
+                rhsVal = context.Builder.CreateZExt(rhsVal, lhsType, "zext_assign");
+            }
+            else if (lhsType->isIntegerTy(8) && rhsType->isIntegerTy(1)) {
+                rhsVal = context.Builder.CreateZExt(rhsVal, lhsType, "zext_assign_byte");
+            }
+            else if (lhsType->isIntegerTy(8) && rhsType->isIntegerTy(32)) {
+                rhsVal = context.Builder.CreateTrunc(rhsVal, lhsType, "trunc_assign");
+            }
+        }
+
         context.Builder.CreateStore(rhsVal, lhsPtr);
     } 
     else if (stmtType == "pc") {
@@ -612,51 +633,60 @@ llvm::Value* exprNode::codegen(CodegenContext& context) {
         case '=': {
             llvm::Value* L = leftExpr->codegen(context);
             llvm::Value* R = rightExpr->codegen(context);
+            if (!L || !R) return nullptr;
             CodegenContext::promoteToI32(L, R, context);
             return context.Builder.CreateICmpEQ(L, R, "eqtmp");
         }
         case '<': {
             llvm::Value* L = leftExpr->codegen(context);
             llvm::Value* R = rightExpr->codegen(context);
+            if (!L || !R) return nullptr;
             CodegenContext::promoteToI32(L, R, context); 
             return context.Builder.CreateICmpSLT(L, R, "lttmp"); 
         }
         case '>': {
             llvm::Value* L = leftExpr->codegen(context);
             llvm::Value* R = rightExpr->codegen(context);
+            if (!L || !R) return nullptr;
             CodegenContext::promoteToI32(L, R, context); 
             return context.Builder.CreateICmpSGT(L, R, "gttmp"); 
         }
         case 'g': {
             llvm::Value* L = leftExpr->codegen(context);
             llvm::Value* R = rightExpr->codegen(context);
+            if (!L || !R) return nullptr;
             CodegenContext::promoteToI32(L, R, context);
             return context.Builder.CreateICmpSGE(L, R, "getmp");
         }
         case 'l': {
             llvm::Value* L = leftExpr->codegen(context);
             llvm::Value* R = rightExpr->codegen(context);
+            if (!L || !R) return nullptr;
             CodegenContext::promoteToI32(L, R, context);
             return context.Builder.CreateICmpSLE(L, R, "letmp");
         }
         case 'd': {
             llvm::Value* L = leftExpr->codegen(context);
             llvm::Value* R = rightExpr->codegen(context);
+            if (!L || !R) return nullptr;
             CodegenContext::promoteToI32(L, R, context);
             return context.Builder.CreateICmpNE(L, R, "netmp");
         }
         case 'a': {
             llvm::Value* L = leftExpr->codegen(context);
             llvm::Value* R = rightExpr->codegen(context);
+            if (!L || !R) return nullptr;
             return context.Builder.CreateAnd(L, R, "andtmp");
         }
         case 'o': {
             llvm::Value* L = leftExpr->codegen(context);
             llvm::Value* R = rightExpr->codegen(context);
+            if (!L || !R) return nullptr;
             return context.Builder.CreateOr(L, R, "ortmp");
         }
         case 'n': {
             llvm::Value* R = rightExpr->codegen(context);
+            if (!R) return nullptr;
             return context.Builder.CreateNot(R, "nottmp");
         }
         default:
@@ -703,6 +733,17 @@ llvm::Value* fcallNode::codegen(CodegenContext& context) {
                 ArgVal = argExpr->codegen(context);
             }
             if (!ArgVal) return nullptr;
+
+            if (ArgVal->getType() != ParamType) {
+                if (ArgVal->getType()->isIntegerTy() && ParamType->isIntegerTy()) {
+                     if (ArgVal->getType()->getIntegerBitWidth() < ParamType->getIntegerBitWidth()) {
+                         ArgVal = context.Builder.CreateZExt(ArgVal, ParamType, "arg_promote");
+                     } else {
+                         ArgVal = context.Builder.CreateTrunc(ArgVal, ParamType, "arg_trunc");
+                     }
+                }
+            }
+
             ArgsV.push_back(ArgVal);
         }
     }
@@ -729,13 +770,20 @@ llvm::Value* lvalNode::codegen(CodegenContext& context) {
     } else if (auto* gv = llvm::dyn_cast<llvm::GlobalVariable>(ptr)) {
         loadType = gv->getValueType();
     } else if (auto* arg = llvm::dyn_cast<llvm::Argument>(ptr)) {
-        if (auto *PT = llvm::dyn_cast<llvm::PointerType>(arg->getType()))
+        if (auto *PT = llvm::dyn_cast<llvm::PointerType>(arg->getType())) {
             loadType = PT->getElementType();
-        else
+            if (!loadType) return context.logError("Failed to get pointer element type for argument");
+        } else {
             loadType = arg->getType();
+        }
     } else {
         if (ptr->getType()->isPointerTy()) {
-            loadType = ptr->getType()->getPointerElementType();
+            if (auto *PT = llvm::dyn_cast<llvm::PointerType>(ptr->getType())) {
+                loadType = PT->getElementType();
+                if (!loadType) return context.logError("Failed to get pointer element type");
+            } else {
+                return context.logError("lval::codegen: could not cast to PointerType");
+            }
         } else {
             return context.logError("lval::codegen: ptr is not a valid pointer type");
         }
@@ -768,15 +816,24 @@ llvm::Value* lvalNode::codegen_ptr(CodegenContext& context) {
         }
     }
 
-    // 2. Determine base types
     llvm::Type* gepBaseType = nullptr;
     if (auto *PT = llvm::dyn_cast<llvm::PointerType>(Ptr->getType())) {
         gepBaseType = PT->getElementType();
+        if (!gepBaseType) return context.logError("Failed to get element type for pointer in codegen_ptr");
     } else {
         return context.logError("Variable is not a pointer/address");
     }
 
-    if (!ind || ind->empty()) return Ptr;
+    if (!ind || ind->empty()) {
+        bool isGlobalArray = false;
+        if (auto* GV = llvm::dyn_cast<llvm::GlobalVariable>(Ptr)) {
+             if (GV->getValueType()->isArrayTy()) isGlobalArray = true;
+        }
+        if (isGlobalArray) {
+            return Ptr;
+        }
+        return Ptr;
+    }
 
     std::vector<llvm::Value*> IdxList;
     llvm::Type* currentType = Ptr->getType(); 
@@ -796,11 +853,26 @@ llvm::Value* lvalNode::codegen_ptr(CodegenContext& context) {
     }
 
     for (auto* idxExpr : *ind) {
+        llvm::Value* idxVal = idxExpr->codegen(context);
+        if (!idxVal) return nullptr;
+        
+        // FIX: Ensure index is i32
+        if (idxVal->getType()->isIntegerTy(8)) {
+            idxVal = context.Builder.CreateZExt(idxVal, context.Builder.getInt32Ty(), "idxzext");
+        } else if (idxVal->getType()->isIntegerTy(1)) {
+            idxVal = context.Builder.CreateZExt(idxVal, context.Builder.getInt32Ty(), "idxzext");
+        }
+
         if (currentType->isPointerTy()) {
-            IdxList.push_back(idxExpr->codegen(context));
-            currentType = currentType->getPointerElementType();
+            IdxList.push_back(idxVal);
+            if (auto *PTy = llvm::dyn_cast<llvm::PointerType>(currentType)) {
+                currentType = PTy->getElementType();
+                if (!currentType) return context.logError("Failed to get pointer element type during indexing");
+            } else {
+                return context.logError("Could not cast to PointerType during indexing");
+            }
         } else if (currentType->isArrayTy()) {
-            IdxList.push_back(idxExpr->codegen(context));
+            IdxList.push_back(idxVal);
             currentType = currentType->getArrayElementType();
         }
         else {
@@ -808,4 +880,27 @@ llvm::Value* lvalNode::codegen_ptr(CodegenContext& context) {
         }
     }
     return context.Builder.CreateGEP(gepBaseType, Ptr, IdxList, "geptmp");
+}
+
+void CodegenContext::optimize() {
+    llvm::legacy::FunctionPassManager fpm(TheModule.get());
+
+    // 1. Promote Memory to Register (Mem2Reg):
+    fpm.add(llvm::createPromoteMemoryToRegisterPass());
+
+    // 2. Instruction Combining:
+    fpm.add(llvm::createInstructionCombiningPass());
+
+    // 3. Reassociate expressions:
+    fpm.add(llvm::createReassociatePass());
+
+    // 4. Eliminate Common SubExpressions (GVN):
+    fpm.add(llvm::createNewGVNPass());
+
+    // 5. CFG Simplification:
+    fpm.add(llvm::createCFGSimplificationPass());
+    fpm.doInitialization();
+    for (auto &F : *TheModule) {
+        fpm.run(F);
+    }
 }

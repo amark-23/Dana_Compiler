@@ -83,6 +83,8 @@ public:
     llvm::BasicBlock* getBreakBlock(std::string name);
     llvm::BasicBlock* getContinueBlock(std::string name);
 
+    void optimize();
+
 };
 
 #endif

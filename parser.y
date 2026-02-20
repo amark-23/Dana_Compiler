@@ -410,7 +410,7 @@ int main(int argc, char* argv[]) {
         } else if (mode_f) {
             context.printFinal(std::cout);
         } else {
-            (void)optimize;
+            if (optimize) context.optimize();
             std::ofstream imm_stream(immFile);
             context.printIntermediate(imm_stream);
             imm_stream.close();
