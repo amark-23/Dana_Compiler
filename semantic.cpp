@@ -33,7 +33,6 @@ void if_semanticCheck(ifNode *node, SymbolTable &sym) {
     if (node->ifCond) {
         typeClass *condType = node->ifCond->semanticCheck(sym);
         static basicType boolType(TYPE_BOOL);
-
         bool isValid = sameType(condType, &boolType);
         if (!isValid) throw SemanticError("Condition must be of integer (boolean) type " + typeToString(condType->getType()), node->lineno);
     }
@@ -85,7 +84,11 @@ typeClass *exprNode::semanticCheck(SymbolTable &sym) {
                 for (auto &n : *(p->names)) {
                     typeClass *expected = p->types;
                     typeClass *given = args[idx++]->semanticCheck(sym);
-                    if (!sameType(expected, given)) throw SemanticError("Type mismatch in argument '" + n + "' (" + typeToString(expected->getType()) + ") of '" + func->iden->name + "' (" + typeToString(given->getType()) + ")", this->lineno);
+
+                    bool compatible = sameType(expected, given) ||
+                                      (expected->getType() == TYPE_CHAR && given->getType() == TYPE_BOOL);
+
+                    if (!compatible) throw SemanticError("Type mismatch in argument '" + n + "' (" + typeToString(expected->getType()) + ") of '" + func->iden->name + "' (" + typeToString(given->getType()) + ")", this->lineno);
                 }
 
             return hdr->headType;
