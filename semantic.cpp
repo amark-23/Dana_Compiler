@@ -128,21 +128,26 @@ typeClass *exprNode::semanticCheck(SymbolTable &sym) {
 }
 
 typeClass *lvalNode::semanticCheck(SymbolTable &sym) {
-    if (!ident) throw SemanticError("Invalid identifier", this->lineno);
+    typeClass *curType = nullptr;
+    std::string name = "string literal";
     if (isString) {
         static arrayType strType(new basicType(TYPE_CHAR), new Const(0));
-        return &strType;
+        curType = &strType;
+        if (ident) name = ident->name;
+    } else {
+        if (!ident) throw SemanticError("Invalid identifier", this->lineno);
+        name = ident->name;
+        SymbolEntry *entry = sym.lookup(name);
+        if (!entry) throw SemanticError("Undeclared variable '" + name + "'", this->lineno);
+        curType = entry->type;
     }
-    SymbolEntry *entry = sym.lookup(ident->name);
-    if (!entry) throw SemanticError("Undeclared variable '" + ident->name + "'", this->lineno);
-    typeClass *curType = entry->type;
     if (ind && !ind->empty()) {
         for (auto *idxExpr : *ind) {
             arrayType *arrT = dynamic_cast<arrayType*>(curType);
-            if (!arrT) throw SemanticError("Variable '" + ident->name + "' is not an array", this->lineno);
+            if (!arrT) throw SemanticError("Variable '" + name + "' is not an array", this->lineno);
             typeClass *idxType = idxExpr->semanticCheck(sym);
             static basicType intType(TYPE_INT);
-            if (!sameType(idxType, &intType)) throw SemanticError("Array index for '" + ident->name + "' must be int", this->lineno);
+            if (!sameType(idxType, &intType)) throw SemanticError("Array index for '" + name + "' must be int", this->lineno);
             curType = arrT->getBaseType();
         }
     }

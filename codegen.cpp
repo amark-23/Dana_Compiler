@@ -732,7 +732,7 @@ llvm::Value* fcallNode::codegen(CodegenContext& context) {
 
 
 llvm::Value* lvalNode::codegen(CodegenContext& context) {
-    if (isString) {
+    if (isString && (!ind || ind->empty())) {
         std::string raw_literal = ident->name;
         std::string processed_str = process_escapes(raw_literal.substr(1, raw_literal.length() - 2));
         return context.Builder.CreateGlobalStringPtr(processed_str);
@@ -779,18 +779,16 @@ llvm::Value* lvalNode::codegen(CodegenContext& context) {
 
 
 llvm::Value* lvalNode::codegen_ptr(CodegenContext& context) {
+    llvm::Value* Ptr = nullptr;
     if (isString) {
         std::string raw_literal = ident->name;
         std::string processed_str = process_escapes(raw_literal.substr(1, raw_literal.length() - 2));
-        return context.Builder.CreateGlobalStringPtr(processed_str);
-    }
-    llvm::Value* Ptr = context.findVariable(ident->name);
-    if (!Ptr) return context.logError("lval base variable not found: " + ident->name);
-
-    if (auto* alloca = llvm::dyn_cast<llvm::AllocaInst>(Ptr)) {
-        if (alloca->getAllocatedType()->isPointerTy()) {
-            Ptr = context.Builder.CreateLoad(alloca->getAllocatedType(), Ptr, "loadrefptr");
-        }
+        Ptr = context.Builder.CreateGlobalStringPtr(processed_str);
+    } else {
+        Ptr = context.findVariable(ident->name);
+        if (!Ptr) return context.logError("lval base variable not found: " + ident->name);
+        if (auto* alloca = llvm::dyn_cast<llvm::AllocaInst>(Ptr))
+            if (alloca->getAllocatedType()->isPointerTy()) Ptr = context.Builder.CreateLoad(alloca->getAllocatedType(), Ptr, "loadrefptr");
     }
 
     llvm::Type* gepBaseType = nullptr;
@@ -814,11 +812,13 @@ llvm::Value* lvalNode::codegen_ptr(CodegenContext& context) {
 
     bool isArrayAlloca = false;
 
-    if (auto* AI = llvm::dyn_cast<llvm::AllocaInst>(context.findVariable(ident->name))) {
-        if (AI->getAllocatedType()->isArrayTy()) isArrayAlloca = true;
-    }
-    else if (auto* GV = llvm::dyn_cast<llvm::GlobalVariable>(context.findVariable(ident->name))) {
-        if (GV->getValueType()->isArrayTy()) isArrayAlloca = true;
+    if (!isString) {
+        if (auto* AI = llvm::dyn_cast<llvm::AllocaInst>(context.findVariable(ident->name))) {
+            if (AI->getAllocatedType()->isArrayTy()) isArrayAlloca = true;
+        }
+        else if (auto* GV = llvm::dyn_cast<llvm::GlobalVariable>(context.findVariable(ident->name))) {
+            if (GV->getValueType()->isArrayTy()) isArrayAlloca = true;
+        }
     }
 
     if (isArrayAlloca) {
