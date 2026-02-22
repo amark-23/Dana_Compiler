@@ -33,7 +33,9 @@ void if_semanticCheck(ifNode *node, SymbolTable &sym) {
     if (node->ifCond) {
         typeClass *condType = node->ifCond->semanticCheck(sym);
         static basicType boolType(TYPE_BOOL);
-        if (!sameType(condType, &boolType)) throw SemanticError("Condition must be of integer (boolean) type " + typeToString(condType->getType()), node->lineno);
+
+        bool isValid = sameType(condType, &boolType);
+        if (!isValid) throw SemanticError("Condition must be of integer (boolean) type " + typeToString(condType->getType()), node->lineno);
     }
 
     sym.enterScope();
@@ -58,8 +60,8 @@ typeClass *exprNode::semanticCheck(SymbolTable &sym) {
             return &charType;
         }
         case 'b': {
-            static basicType charType(TYPE_CHAR);
-            return &charType;
+            static basicType boolType(TYPE_BOOL);
+            return &boolType;
         }
         case 'i': {
             if (!lval) throw SemanticError("Identifier expression missing lval", this->lineno);
@@ -104,7 +106,12 @@ typeClass *exprNode::semanticCheck(SymbolTable &sym) {
                 typeClass *l = leftExpr->semanticCheck(sym);
                 typeClass *r = rightExpr->semanticCheck(sym);
                 if (!l || !r) throw SemanticError("Null operand in relational/logical expression", this->lineno);
-                if (!sameType(l, r)) throw SemanticError("Incompatible operand types for relational/logical operator", this->lineno);
+
+                bool compatible = sameType(l, r) ||
+                                  (l->getType() == TYPE_CHAR && r->getType() == TYPE_BOOL) ||
+                                  (l->getType() == TYPE_BOOL && r->getType() == TYPE_CHAR);
+
+                if (!compatible) throw SemanticError("Incompatible operand types for relational/logical operator", this->lineno);
             } else {
                 typeClass *r = rightExpr->semanticCheck(sym);
                 if (!r) throw SemanticError("Null operand for unary logical operator", this->lineno);
@@ -162,7 +169,11 @@ void stmtNode::semanticCheck(SymbolTable &sym) {
         if (lt->isArray() && !rt->isArray()) throw SemanticError("Invalid assignment: right-hand expression is not an array.", this->lineno);
         if (!lt->isArray() && rt->isArray()) throw SemanticError("Invalid assignment: cannot assign an array to a non-array element.", this->lineno);
         if (lt->isArray() && rt->isArray()) throw SemanticError("Invalid assignment: entire arrays cannot be directly assigned.", this->lineno);
-        if (!sameType(lt, rt)) throw SemanticError("Type mismatch in assignment to '" + lval->ident->name + "' (" + typeToString(lt->getType()) + " cannot be converted to " + typeToString(rt->getType()) + ")", this->lineno);
+
+        bool compatible = sameType(lt, rt) ||
+                          (lt->getType() == TYPE_CHAR && rt->getType() == TYPE_BOOL);
+
+        if (!compatible) throw SemanticError("Type mismatch in assignment to '" + lval->ident->name + "' (" + typeToString(lt->getType()) + " cannot be converted to " + typeToString(rt->getType()) + ")", this->lineno);
     }
     else if (stmtType == "if") {
         if (!ifnode) throw SemanticError("Malformed if statement", this->lineno);
